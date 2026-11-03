@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 其余键由 project.yml 中的 INFOPLIST_KEY_* 生成 -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.maio.command</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>maio</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>MAIO 需要通过 AppleScript 执行你绑定到快捷键的脚本。</string>
+</dict>
+</plist>

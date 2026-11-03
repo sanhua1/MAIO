@@ -1,0 +1,5 @@
+// 公共构建设置。签名身份放在本机私有的 Signing.local.xcconfig 中（由 make bootstrap 生成，不进 git）。
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+#include? "Signing.local.xcconfig"

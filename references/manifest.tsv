@@ -1,0 +1,13 @@
+# name	url	commit	license
+vorssaint-utils	https://github.com/vorssaint/vorssaint-utils.git	a5da763	GPL-3.0-or-later
+Mos	https://github.com/Caldis/Mos.git	8a2fd11	CC-BY-NC-4.0
+alt-tab-macos	https://github.com/lwouis/alt-tab-macos.git	c500294b	GPL-3.0
+pot-desktop	https://github.com/pot-app/pot-desktop.git	594d32e	GPL-3.0
+Maccy	https://github.com/p0deje/Maccy.git	f0b571e3	MIT
+Ditto	https://github.com/sabrogden/Ditto.git	a80fd353	GPL-3.0
+flameshot	https://github.com/flameshot-org/flameshot.git	f4f2e4e8	GPL-3.0
+ShareX	https://github.com/ShareX/ShareX.git	8ed375c7	GPL-3.0
+pinlume	https://github.com/pinlume/pinlume.git	82278e17	GPL-3.0
+snow-apps	https://github.com/mg-chao/snow-apps.git	a645e0e870	GPL-3.0-or-later (snow_shot, snow-crates)
+eSearch	https://github.com/xushengfeng/eSearch.git	c0b8085a6b	GPL-3.0
+LinearMouse	https://github.com/linearmouse/linearmouse.git	a1e33ed882	MIT

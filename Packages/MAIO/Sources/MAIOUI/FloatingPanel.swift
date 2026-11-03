@@ -1,0 +1,50 @@
+import AppKit
+import SwiftUI
+
+/// 不抢焦点的浮动面板（HUD、剪贴板面板、切换器等共用）。
+@MainActor
+public final class FloatingPanel<Content: View>: NSPanel {
+    private let acceptsKeyboard: Bool
+
+    public init(rootView: Content, size: CGSize = CGSize(width: 320, height: 80), acceptsKeyboard: Bool = false) {
+        self.acceptsKeyboard = acceptsKeyboard
+        var style: NSWindow.StyleMask = [.borderless, .fullSizeContentView]
+        if !acceptsKeyboard {
+            style.insert(.nonactivatingPanel)
+        }
+        super.init(contentRect: CGRect(origin: .zero, size: size), styleMask: style, backing: .buffered, defer: true)
+        isFloatingPanel = true
+        level = .statusBar
+        backgroundColor = .clear
+        isOpaque = false
+        hasShadow = false
+        hidesOnDeactivate = false
+        isReleasedWhenClosed = false
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        let hosting = NSHostingView(rootView: rootView)
+        hosting.sizingOptions = [.intrinsicContentSize]
+        contentView = hosting
+    }
+
+    /// 无边框窗口默认不能成为 key window（无法输入文字），需要键盘输入的面板要打开。
+    override public var canBecomeKey: Bool {
+        acceptsKeyboard || super.canBecomeKey
+    }
+
+    public var hostingView: NSHostingView<Content>? {
+        contentView as? NSHostingView<Content>
+    }
+
+    /// 放在鼠标所在屏幕的指定相对位置（0...1，原点在左下）。
+    public func place(relativeX: CGFloat = 0.5, relativeY: CGFloat = 0.5) {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
+        guard let frame = screen?.visibleFrame else { return }
+        let size = hostingView?.fittingSize ?? self.frame.size
+        setContentSize(size)
+        setFrameOrigin(CGPoint(
+            x: frame.minX + (frame.width - size.width) * relativeX,
+            y: frame.minY + (frame.height - size.height) * relativeY,
+        ))
+    }
+}

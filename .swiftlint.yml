@@ -1,0 +1,52 @@
+# 规则说明见 docs/ARCHITECTURE.md §11
+included:
+  - App
+  - Packages/MAIO/Sources
+  - Packages/MAIO/Tests
+excluded:
+  - references
+  - build
+  - Packages/MAIO/.build
+  - Templates
+  - opensource
+
+opt_in_rules:
+  - force_unwrapping
+  - empty_count
+  - first_where
+  - contains_over_first_not_nil
+  - sorted_first_last
+  - redundant_nil_coalescing
+
+analyzer_rules:
+  - unused_declaration
+
+disabled_rules:
+  - todo
+  - identifier_name        # 允许 x、y、id 等短名
+  - opening_brace          # 与 SwiftFormat 冲突
+  - trailing_comma         # SwiftFormat 负责
+  - line_length            # SwiftFormat 负责（maxwidth）
+
+file_length:
+  warning: 350
+  error: 400
+function_body_length:
+  warning: 50
+  error: 60
+type_body_length:
+  warning: 250
+  error: 350
+cyclomatic_complexity:
+  warning: 12
+  error: 20
+nesting:
+  type_level: 2
+large_tuple:
+  warning: 3
+  error: 4
+type_name:
+  excluded: [ID]
+force_unwrapping: error
+force_try: error
+force_cast: error

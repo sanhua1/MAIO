@@ -1,0 +1,20 @@
+# 参考项目源码：只保留清单和说明
+/references/*
+!/references/README.md
+!/references/manifest.tsv
+
+# Xcode / SPM
+*.xcodeproj
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+.DS_Store
+
+# 本机签名配置
+/Config/Signing.local.xcconfig
+/build/
+.claude/worktrees/
+
+# 开源导出目录：独立的 git 仓库（scripts/sync-opensource.sh 维护）
+/opensource/

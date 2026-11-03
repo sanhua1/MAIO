@@ -1,0 +1,3 @@
+# 测试中允许强制解包（失败即测试失败）
+disabled_rules:
+  - force_unwrapping

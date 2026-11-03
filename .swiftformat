@@ -1,0 +1,10 @@
+--swiftversion 6.2
+--exclude references,build,Packages/MAIO/.build,Templates,MAIO.xcodeproj,opensource
+--maxwidth 130
+--indent 4
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+--disable preferKeyPath,redundantSelf,wrapMultilineStatementBraces,preferForLoop,redundantReturn,blankLinesAtStartOfScope,docComments
+--header ignore
