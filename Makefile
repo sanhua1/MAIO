@@ -6,7 +6,7 @@ BUILD_DIR := build
 APP       := $(BUILD_DIR)/Build/Products/Debug/MAIO.app
 XCODEBUILD := xcodebuild -project MAIO.xcodeproj -scheme MAIO -destination "platform=macOS,arch=arm64" -configuration Debug -derivedDataPath $(BUILD_DIR) -quiet
 
-.PHONY: bootstrap build test lint format format-check arch check run install new-feature references clean
+.PHONY: bootstrap build test lint format format-check arch check run install release new-feature references clean
 
 bootstrap: ## 生成 Xcode 工程与本机签名配置
 	@command -v xcodegen >/dev/null || { echo "请先 brew install xcodegen swiftlint swiftformat"; exit 1; }
@@ -47,6 +47,18 @@ install: ## 构建并安装到 /Applications（登录启动建议使用安装版
 	@pkill -x MAIO 2>/dev/null; sleep 0.5
 	@rm -rf /Applications/MAIO.app && cp -R $(BUILD_DIR)/Build/Products/Release/MAIO.app /Applications/
 	@open /Applications/MAIO.app && echo "✅ 已安装到 /Applications/MAIO.app"
+
+VERSION := $(shell sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)
+RELEASE_DIR := $(BUILD_DIR)/release
+
+release: MAIO.xcodeproj ## 打包发布版：临时签名（没有 Developer ID，不能公证），输出 build/release/MAIO-<版本>.zip
+	@rm -rf $(RELEASE_DIR)
+	@xcodebuild -project MAIO.xcodeproj -scheme MAIO -destination "platform=macOS,arch=arm64" -configuration Release \
+		-derivedDataPath $(BUILD_DIR) -quiet build CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGN_STYLE=Manual
+	@mkdir -p $(RELEASE_DIR)
+	@ditto -c -k --keepParent $(BUILD_DIR)/Build/Products/Release/MAIO.app $(RELEASE_DIR)/MAIO-$(VERSION).zip
+	@shasum -a 256 $(RELEASE_DIR)/MAIO-$(VERSION).zip
+	@echo "✅ 已打包：$(RELEASE_DIR)/MAIO-$(VERSION).zip"
 
 new-feature: ## 新建功能：make new-feature NAME=ColorPicker ID=colorPicker
 	@scripts/new-feature.sh "$(NAME)" "$(ID)"

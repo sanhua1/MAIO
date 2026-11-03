@@ -49,12 +49,38 @@ MAIO 把日常离不开的几个小工具装进同一个 App：截图、翻译�
 - 检测和系统快捷键的冲突，可以一键禁用并在之后恢复系统快捷键。
 - 所有命令也能通过 URL 调用：`open "maio://run/system.openApp?app=com.apple.Calculator"`。
 
+## 安装
+
+1. 到 [Releases](https://github.com/sanhua1/MAIO/releases) 下载最新的 `MAIO-<版本>.zip`，解压后把 `MAIO.app` 拖进「应用程序」文件夹。
+2. **第一次打开要手动放行。** MAIO 没有用付费的 Apple 开发者证书签名，也没有经过苹果公证，所以第一次双击时 macOS 会提示"无法验证开发者"或"已损坏"，不让打开。任选一种方法放行：
+   - **系统设置**：先双击一次 MAIO（会被拦下），然后打开「系统设置 › 隐私与安全性」，在页面下方找到 MAIO 的提示，点「仍要打开」，输入密码确认。
+   - **终端**：运行下面这行命令，去掉下载文件的隔离标记，之后就能直接双击打开：
+     ```sh
+     xattr -dr com.apple.quarantine /Applications/MAIO.app
+     ```
+3. **授予权限。** MAIO 常驻在菜单栏（没有程序坞图标），打开后在菜单栏点它的图标 →「设置…」→「权限」，按提示在「系统设置 › 隐私与安全性」里打开：
+   - **辅助功能**：全局快捷键、滚动、窗口切换、剪贴板粘贴都需要；
+   - **屏幕录制**（只有用截图、窗口缩略图时需要）。
+
+   授权后如果快捷键还没生效，退出 MAIO 再打开一次。
+4. 想开机自动启动：「系统设置 › 通用 › 登录项」里添加 MAIO。
+
+### 升级
+
+下载新版本，退出 MAIO，用新的 `MAIO.app` 替换「应用程序」里的旧版本，再按上面第 2 步放行一次。
+
+因为没有固定的开发者签名，系统会把新版本当成另一个 App：如果升级后快捷键、截图不工作，到「系统设置 › 隐私与安全性 › 辅助功能」（以及「屏幕录制」）里把旧的 MAIO 删掉（选中后点「−」），再重新添加、打开开关。
+
+### 卸载
+
+退出 MAIO，删除「应用程序」里的 MAIO.app。设置和数据（剪贴板历史、截图历史）在 `~/Library/Application Support/MAIO`，一并删除即可。翻译源的 API Key 存在钥匙串里，可以在「钥匙串访问」里搜索 `app.maio` 删除。
+
 ## 系统要求
 
-- macOS 26 或更高版本，Apple 芯片
+- macOS 26 或更高版本，Apple 芯片（M 系列）
 - 从源码构建：Xcode 26、[XcodeGen](https://github.com/yonaskolb/XcodeGen)、[SwiftLint](https://github.com/realm/SwiftLint)、[SwiftFormat](https://github.com/nicklockwood/SwiftFormat)
 
-## 构建
+## 从源码构建
 
 ```sh
 brew install xcodegen swiftlint swiftformat
@@ -69,6 +95,7 @@ make run         # 构建并启动
 ```sh
 make test     # 单元测试
 make check    # 格式 + lint + 架构校验 + 测试 + 构建
+make release  # 打包发布版（临时签名）：build/release/MAIO-<版本>.zip
 ```
 
 ## 权限
