@@ -3,13 +3,16 @@ import MAIOKit
 
 /// 一次长截图（spec F10、4.6，ADR-0014）：用户自己用滚轮往下滚，MAIO 不发任何滚动事件。
 /// 选区开一个视频流，每来一帧就和参照帧（最后一次接上的帧）比较，接上新露出的部分，右侧面板显示长条预览。
-/// 对不上时参照帧不变：滚回去重新有重叠就能继续，不会拼错。往回滚不算错误，只是暂时不拼。
+/// 对不上时参照帧不变：滚回去重新有重叠就能继续，不会拼错。往回滚不算错误：落在已拼范围里就只更新位置，
+/// 超过起点会向画布头部扩展。
 /// 结束：点完成、Esc / ⏎、高度达到 30000 px。
 @MainActor
 final class ScrollCaptureSession {
     static let maximumHeight = 30000
     /// 没有新帧时等多久再看
     static let idleWait: Duration = .milliseconds(10)
+    /// 处理一帧至少间隔这么久：Debug 构建下匹配约 80 ms（1440×900），不必追 60 fps
+    static let minimumInterval: Duration = .milliseconds(30)
 
     let rect: CGRect
     let scale: CGFloat
@@ -74,47 +77,45 @@ final class ScrollCaptureSession {
                 builder = LongImageBuilder(first: image, previewWidth: Int(ScrollCaptureSidebar.width * 2))
                 self.reference = await Task.detached { GrayFrame(image) }.value
                 model.height = image.height
+                model.frameHeight = image.height
                 model.preview = builder?.preview()
                 continue
             }
             switch await Self.match(image, reference: reference) {
             case let .moved(match, gray):
                 model.warning = nil
-                builder?.append(image, shift: match.offset)
+                builder?.append(image, offset: match.offset)
                 self.reference = gray
                 model.height = builder?.height ?? 0
+                model.position = builder?.plan.position ?? 0
                 model.preview = builder?.preview()
                 if model.height >= Self.maximumHeight {
                     return
                 }
-            case .unchanged, .backward:
+            case .unchanged:
                 model.warning = nil
             case .unknown:
-                model.warning = "没对上：滚得太快了。\n滚回上次停下的位置，再慢一点往下滚"
+                model.warning = "没对上：滚得太快了，或者页面自己变了。\n滚回上次停下的位置，再慢一点往下滚"
             }
+            // 处理不完的中间帧会被视频流丢掉，这里只控制处理节奏
+            try? await Task.sleep(for: Self.minimumInterval)
         }
     }
 
     private enum FrameResult {
         case moved(ScrollMatch, GrayFrame)
         case unchanged
-        /// 往回滚了（还在已经拼过的范围里）：暂时不拼，参照帧不变
-        case backward
         case unknown
     }
 
-    /// 在后台转灰度、算偏移。往下对不上时再看是不是往回滚了
+    /// 在后台转灰度、算偏移（正数往下滚，负数往回滚）
     private nonisolated static func match(_ image: CGImage, reference: GrayFrame) async -> FrameResult {
         await Task.detached(priority: .userInitiated) {
             guard let gray = GrayFrame(image) else { return FrameResult.unknown }
             switch ScrollMatcher.match(previous: reference, current: gray) {
             case let .moved(match): return .moved(match, gray)
             case .unchanged: return .unchanged
-            case .unknown:
-                if case .moved = ScrollMatcher.match(previous: gray, current: reference) {
-                    return .backward
-                }
-                return .unknown
+            case .unknown: return .unknown
             }
         }.value
     }

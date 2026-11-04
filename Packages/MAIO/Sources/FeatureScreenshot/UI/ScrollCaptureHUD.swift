@@ -7,6 +7,10 @@ import SwiftUI
 final class ScrollCaptureModel {
     /// 已拼好的高度（像素）
     var height = 0
+    /// 选区高度（像素）
+    var frameHeight = 0
+    /// 当前画面顶部在长图中的位置（画布坐标）
+    var position = 0
     /// 长条预览（已拼好的整张图缩小）
     var preview: CGImage?
     /// 对不上时的提示
@@ -14,7 +18,7 @@ final class ScrollCaptureModel {
     @ObservationIgnored var finish: () -> Void = {}
 }
 
-/// 选区右侧的竖条面板：高度、完成按钮、长条预览
+/// 选区右侧的竖条面板：高度、完成按钮、长条预览（绿框 = 当前画面在长图中的位置）
 struct ScrollCaptureSidebar: View {
     static let width: CGFloat = 180
 
@@ -32,12 +36,7 @@ struct ScrollCaptureSidebar: View {
                 .foregroundStyle(model.warning == nil ? Color.secondary : Color.orange)
                 .fixedSize(horizontal: false, vertical: true)
             if let preview = model.preview {
-                Image(decorative: preview, scale: 2)
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity, alignment: .top)
-                    .overlay(Rectangle().stroke(.separator))
+                previewView(preview)
             }
         }
         .padding(10)
@@ -45,6 +44,33 @@ struct ScrollCaptureSidebar: View {
         .panelGlass(cornerRadius: 12)
         // 面板比内容高：内容贴着顶部，下面透明（点击会穿透）
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func previewView(_ preview: CGImage) -> some View {
+        GeometryReader { proxy in
+            let scale = min(
+                proxy.size.width / CGFloat(max(preview.width, 1)),
+                proxy.size.height / CGFloat(max(preview.height, 1)),
+            )
+            let width = CGFloat(preview.width) * scale
+            let height = CGFloat(preview.height) * scale
+            let total = CGFloat(max(model.height, 1))
+            let frameHeight = min(height, CGFloat(model.frameHeight) / total * height)
+            let top = min(height - frameHeight, max(0, CGFloat(model.position) / total * height))
+            Image(decorative: preview, scale: 1)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: width, height: height)
+                .overlay(alignment: .topLeading) {
+                    Rectangle()
+                        .stroke(Color.green, lineWidth: 1)
+                        .frame(width: width, height: max(2, frameHeight))
+                        .offset(y: top)
+                }
+                .overlay(Rectangle().stroke(.separator))
+                .frame(maxWidth: .infinity, alignment: .top)
+        }
+        .frame(minHeight: 120)
     }
 }
 

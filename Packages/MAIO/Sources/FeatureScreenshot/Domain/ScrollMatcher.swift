@@ -1,261 +1,213 @@
 import Foundation
 
-/// 灰度帧（逐行存放，每像素 1 字节）。长截图的偏移计算只用灰度，便于用合成数据测试。
-struct GrayFrame: Sendable, Equatable {
-    let width: Int
-    let height: Int
-    let pixels: [UInt8]
-
-    subscript(x: Int, y: Int) -> UInt8 {
-        pixels[y * width + x]
-    }
-}
-
-/// 两帧之间的滚动：新的一帧相对上一帧，内容向上移动了 offset 行（像素）
+/// 两帧之间的滚动：新的一帧相对上一帧，内容向上移动了 offset 行（像素，带符号）。
 struct ScrollMatch: Equatable {
+    /// 正数 = 用户往下滚（内容向上移动）；负数 = 往回滚
     var offset: Int
-    /// 置信度 0...1：1 - 次佳得分 / 最佳得分。越接近 0 说明有别的位移几乎一样好
-    var confidence: Double
-    /// 重叠区里有区分度的格子中，对得上的比例
-    var inlierRatio: Double
+    /// 重叠区变化像素里对不上的比例（0 最好）
+    var mismatch: Double
 }
 
-/// 长截图的偏移计算（ADR-0014）。思路参考 Snow Shot 的长截图（references/snow-apps，GPL，只借鉴思路）：
-/// 只信有区分度的证据、"不动"的内容不参与、严格验收，宁可这一帧不拼也不拼错。
-/// 1. 两帧之间几乎不变的列（固定侧栏）和左右边缘（滚动条）不参与；
-/// 2. 每行切成 16 个竖条分别哈希。一个格子算"证据"要满足：有明暗变化（不是空白）、
-///    哈希在上一帧同一竖条里最多出现 2 次（竖线、分隔线这类到处都一样的不算）、
-///    和上一帧同一位置不同（吸顶栏、页脚这些没动的不算）；
-/// 3. 哈希相同的证据格子给"行号之差"投票，得票最多的几个位移做完整打分：
-///    每个竖条里证据的最长连续匹配段之和；
-/// 4. 验收：位移不超过画面高度的 70%、得分够高、至少 4 个竖条有匹配、
-///    重叠区证据的匹配比例 ≥ 50%（实验：正确的 ≥ 0.64，错误候选 ≤ 0.25）、和次佳位移拉开差距。
+/// 长截图的偏移计算（ADR-0014 修订三）。
+///
+/// 参考成熟的滚动拼接做法（容差比较 + 只比较变化内容 + 全偏移搜索 + 分层 + 严格验收）：
+/// 1. **容差比较**：两帧像素差超过 `tolerance` 才算"变了"/"对不上"，抗亚像素滚动、
+///    抗锯齿和轻微动画；不再要求逐像素完全相等；
+/// 2. **只比较变化过的像素**：固定页眉、侧栏、空白不参与，也不会被误当成匹配；
+/// 3. **全偏移搜索**：负、正两个方向都搜（±70% 画面高度），不会因为"候选没进前几名"漏掉正确位移；
+/// 4. **分层降采样**：粗层（块平均到 64×128）全搜取出几个候选，再在精层（宽度抽样到 ≤512）细化，
+///    兼顾速度与 1 像素精度；
+/// 5. **严格验收**：最佳位移的不匹配率 ≤ 30%，且必须和次佳（相差 3 行以上）拉开差距。
 enum ScrollMatcher {
     enum Outcome: Equatable {
-        /// 和上一帧一样（没滚动）
+        /// 和上一帧一样（没滚动，或只有很小的局部变化）
         case unchanged
         case moved(ScrollMatch)
-        /// 有变化但对不上（滚得太多、往回滚、内容整体变了）
+        /// 有变化但对不上（滚得太多、页面自己变了、内容重复分不清方向）
         case unknown
     }
 
-    static let bandCount = 16
-    /// 有效格子里最亮和最暗的差至少这么大才算"有内容"
-    static let contrast: UInt8 = 24
-    /// 哈希在上一帧同一竖条里最多出现这么多次才算有区分度
-    static let maximumRepeats = 2
-    /// 一帧之间最多滚动画面高度的这个比例，再多就当作对不上（重叠太少，容易误判）
+    /// 一帧之间最多滚动画面高度的这个比例（重叠至少 30%）
     static let maximumShiftRatio = 0.7
-    /// 投票得票最多的这么多个位移才做完整打分
-    static let candidateCount = 12
-    /// 验收门槛
-    static let minimumScore = 20
-    static let minimumBands = 4
-    static let minimumInlierRatio = 0.5
-    static let minimumConfidence = 0.15
+    /// 像素差超过这么多才算"变了"/"对不上"
+    static let tolerance = 10
+    /// 差异像素少于总量的这个比例就当作没动（光标闪烁、小动画）
+    static let stillRatio = 0.005
+    /// 验收：最佳位移的不匹配率上限
+    static let maximumMismatch = 0.30
+    /// 次佳位移（相差 3 行以上）必须比最佳差这么多，否则算分不清
+    static let minimumMargin = 0.03
+
+    // 分层搜索的参数
+    static let coarseWidth = 64
+    static let coarseHeight = 128
+    static let coarseCandidates = 4
+    static let fineWidth = 512
+    static let fineStride = 4
+    /// 粗层换算成原始坐标后可能有 1～2 像素误差，细化时向两边各多搜几行
+    static let refineSlack = 2
 
     static func match(previous: GrayFrame, current: GrayFrame) -> Outcome {
-        guard previous.width == current.width, previous.height == current.height else { return .unknown }
-        let columns = changedColumns(previous, current)
-        guard columns.count >= 8 else { return .unchanged }
-        let bands = split(columns)
-        let before = RowCells(previous, bands: bands)
-        let after = RowCells(current, bands: bands)
-        let index = BandIndex(before)
-        let limit = Int(Double(current.height) * maximumShiftRatio) + 1
-        var results: [Int: Evidence] = [:]
-        for offset in candidates(index: index, after: after, limit: limit) {
-            results[offset] = evidence(offset: offset, before: before, after: after, index: index)
+        guard previous.width == current.width, previous.height == current.height,
+              previous.width > 3, previous.height > 3 else { return .unknown }
+        let limit = min(previous.height - 1, Int(Double(previous.height) * maximumShiftRatio))
+        guard limit >= 1 else { return .unknown }
+        // 匹配统一在"宽度抽样到 ≤ 512、高度不变"的精层上做（压缩宽度不影响竖直位移）
+        let width = min(previous.width, fineWidth)
+        let prev = previous.sampled(width: width)
+        let cur = current.sampled(width: width)
+        let difference = Difference(prev, cur)
+        guard difference.pixels >= max(64, prev.pixels.count / 200) else { return .unchanged }
+        let candidates = coarseCandidates(prev, cur, limit: limit)
+        let matches = refine(prev, cur, difference: difference, candidates: candidates, limit: limit)
+        return verdict(matches, limit: limit)
+    }
+
+    // MARK: 分层搜索
+
+    private struct Candidates {
+        /// 换算成原始坐标的候选位移
+        var offsets: [Int]
+        /// 粗层换算的取整误差（原始行数）
+        var slack: Int
+    }
+
+    /// 粗层降采样后全偏移搜索，返回换算成原始坐标的几个候选
+    private static func coarseCandidates(_ previous: GrayFrame, _ current: GrayFrame, limit: Int) -> Candidates {
+        let scale = max(1, previous.height / coarseHeight)
+        let width = min(previous.width, coarseWidth)
+        let prev = previous.reduced(width: width, height: max(1, previous.height / scale))
+        let cur = current.reduced(width: width, height: max(1, current.height / scale))
+        let coarseLimit = max(1, limit / scale)
+        let difference = Difference(prev, cur)
+        var scored: [(offset: Int, score: Double)] = []
+        for offset in -coarseLimit ... coarseLimit where offset != 0 {
+            scored.append((offset, mismatch(prev, cur, difference: difference, offset: offset, stride: 1)))
         }
-        let scores = results.mapValues(\.score)
-        guard let offset = best(scores), let found = results[offset] else { return .unknown }
-        let confidence = confidence(scores, offset: offset)
-        guard found.score >= max(minimumScore, before.bands * 4), found.bands >= min(minimumBands, before.bands),
-              found.inlierRatio >= minimumInlierRatio, confidence >= minimumConfidence else { return .unknown }
-        return .moved(ScrollMatch(offset: offset, confidence: confidence, inlierRatio: found.inlierRatio))
-    }
-
-    /// 得分最高的位移（得分相同取较小的，结果稳定）
-    static func best(_ scores: [Int: Int]) -> Int? {
-        scores.max { ($0.value, -$0.key) < ($1.value, -$1.key) }?.key
-    }
-
-    static func confidence(_ scores: [Int: Int], offset: Int) -> Double {
-        guard let best = scores[offset], best > 0 else { return 0 }
-        let second = scores.filter { abs($0.key - offset) > 2 }.values.max() ?? 0
-        return 1 - Double(second) / Double(best)
-    }
-
-    // MARK: 证据
-
-    struct Evidence {
-        /// 各竖条最长连续匹配段之和
-        var score = 0
-        var inliers = 0
-        var outliers = 0
-        /// 有匹配的竖条数
-        var bands = 0
-
-        var inlierRatio: Double {
-            inliers + outliers > 0 ? Double(inliers) / Double(inliers + outliers) : 0
-        }
-    }
-
-    /// 位移 offset 下的证据：新帧第 row 行对应上一帧第 row + offset 行
-    static func evidence(offset: Int, before: RowCells, after: RowCells, index: BandIndex) -> Evidence {
-        var result = Evidence()
-        let end = after.height - offset
-        guard end > 0 else { return result }
-        for band in 0 ..< before.bands {
-            var run = 0
-            var longest = 0
-            var matched = false
-            for row in 0 ..< end where index.isEvidence(after, band, row) {
-                if after.hash(band, row) == before.hash(band, row + offset) {
-                    result.inliers += 1
-                    run += 1
-                    longest = max(longest, run)
-                    matched = true
-                } else {
-                    result.outliers += 1
-                    run = 0
-                }
-            }
-            result.score += longest
-            result.bands += matched ? 1 : 0
-        }
-        return result
-    }
-
-    /// 投票：哈希相同的证据格子给"行号之差"投一票，返回得票最多的位移
-    static func candidates(index: BandIndex, after: RowCells, limit: Int) -> Set<Int> {
-        var votes = [Int](repeating: 0, count: max(limit, 1))
-        for band in 0 ..< after.bands {
-            for row in 0 ..< after.height where index.isEvidence(after, band, row) {
-                for match in index.rows(band, after.hash(band, row)) where match - row >= 1 && match - row < limit {
-                    votes[match - row] += 1
-                }
+        scored.sort { ($0.score, abs($0.offset)) < ($1.score, abs($1.offset)) }
+        // 块平均时实际行数是整除的，换算回原始坐标可能差一个粗行
+        let slack = refineSlack + previous.height / max(1, prev.height)
+        var result: [Int] = []
+        for item in scored where result.allSatisfy({ abs($0 - item.offset * scale) > scale * 2 }) {
+            result.append(item.offset * scale)
+            if result.count == coarseCandidates {
+                break
             }
         }
-        let ranked = votes.indices.filter { votes[$0] > 0 }.sorted { votes[$0] > votes[$1] }
-        return Set(ranked.prefix(candidateCount))
+        return Candidates(offsets: result, slack: slack)
     }
 
-    // MARK: 列
+    /// 在候选附近用全分辨率（宽度已经降到 512）逐像素细化
+    private static func refine(
+        _ previous: GrayFrame, _ current: GrayFrame, difference: Difference,
+        candidates: Candidates, limit: Int,
+    ) -> [(offset: Int, mismatch: Double)] {
+        var results: [(offset: Int, mismatch: Double)] = []
+        for candidate in candidates.offsets {
+            let from = max(-limit, candidate - candidates.slack)
+            let to = min(limit, candidate + candidates.slack)
+            for offset in from ... to {
+                results.append((offset, mismatch(previous, current, difference: difference, offset: offset, stride: fineStride)))
+            }
+        }
+        return results
+    }
 
-    /// 参与比较的列：去掉左右边缘（滚动条），以及两帧之间几乎完全不变的列（隔行抽样）
-    static func changedColumns(_ first: GrayFrame, _ second: GrayFrame) -> [Int] {
-        let width = first.width
-        let height = first.height
-        let margin = min(max(20, width / 20), width / 4)
-        var same = [Int](repeating: 0, count: width)
-        first.pixels.withUnsafeBufferPointer { lhs in
-            second.pixels.withUnsafeBufferPointer { rhs in
-                same.withUnsafeMutableBufferPointer { counts in
-                    var y = 0
-                    while y < height {
-                        let base = y * width
-                        var x = margin
-                        while x < width - margin {
-                            if lhs[base + x] == rhs[base + x] {
-                                counts[x] += 1
+    /// 位移 offset 下，重叠区变化像素里对不上的比例。stride 隔行/隔列抽样。
+    private static func mismatch(
+        _ previous: GrayFrame, _ current: GrayFrame, difference: Difference, offset: Int, stride: Int,
+    ) -> Double {
+        let start = max(0, -offset)
+        let end = min(current.height, current.height - offset)
+        guard end - start >= 2 else { return 1 }
+        let width = current.width
+        let tolerance = ScrollMatcher.tolerance
+        var total = 0
+        var bad = 0
+        previous.pixels.withUnsafeBufferPointer { head in
+            current.pixels.withUnsafeBufferPointer { tail in
+                difference.mask.withUnsafeBufferPointer { mask in
+                    difference.rows.withUnsafeBufferPointer { rows in
+                        var y = start
+                        while y < end {
+                            // 两帧这一行都没有变化时整行跳过（固定页眉、侧栏、空白）
+                            if rows[y] || rows[y + offset] {
+                                let here = y * width
+                                let there = (y + offset) * width
+                                var x = 0
+                                while x < width {
+                                    if mask[here + x] || mask[there + x] {
+                                        total += 1
+                                        let delta = Int(tail[here + x]) - Int(head[there + x])
+                                        if delta > tolerance || delta < -tolerance {
+                                            bad += 1
+                                        }
+                                    }
+                                    x += stride
+                                }
                             }
-                            x += 1
+                            y += stride
                         }
-                        y += 2
                     }
                 }
             }
         }
-        let required = Double((height + 1) / 2) * 0.98
-        return (margin ..< max(margin, width - margin)).filter { Double(same[$0]) < required }
+        return total > 0 ? Double(bad) / Double(total) : 1
     }
 
-    /// 分成竖条；每条只取一半的列（隔列抽样，速度翻倍，实验里不影响准确度）
-    static func split(_ columns: [Int]) -> [[Int]] {
-        let size = max(1, (columns.count + bandCount - 1) / bandCount)
-        return stride(from: 0, to: columns.count, by: size).map { start in
-            Array(stride(from: start, to: min(start + size, columns.count), by: 2).map { columns[$0] })
+    // MARK: 验收
+
+    private static func verdict(_ matches: [(offset: Int, mismatch: Double)], limit: Int) -> Outcome {
+        guard let best = matches.min(by: {
+            ($0.mismatch, abs($0.offset)) < ($1.mismatch, abs($1.offset))
+        }) else { return .unknown }
+        guard best.offset != 0 else { return .unchanged }
+        guard best.mismatch <= maximumMismatch, abs(best.offset) < limit else { return .unknown }
+        let second = matches.filter { abs($0.offset - best.offset) > 2 }.map(\.mismatch).min()
+        if let second, second - best.mismatch < minimumMargin {
+            return .unknown
         }
+        return .moved(ScrollMatch(offset: best.offset, mismatch: best.mismatch))
     }
 }
 
-/// 上一帧每个竖条的"哈希 → 行号"索引，用来判断格子有没有区分度
-struct BandIndex {
-    private let before: RowCells
-    private var rowsByHash: [[UInt64: [Int]]]
+/// 两帧同位比较：哪些像素/行有变化、一共有多少像素变了。
+/// 只比较"有变化"的像素，固定页眉、侧栏、空白既不算证据也不会拉低匹配率。
+struct Difference {
+    private(set) var mask: [Bool]
+    private(set) var rows: [Bool]
+    private(set) var pixels = 0
 
-    init(_ before: RowCells) {
-        self.before = before
-        rowsByHash = (0 ..< before.bands).map { band in
-            var map: [UInt64: [Int]] = [:]
-            for row in 0 ..< before.height where before.isInformative(band, row) {
-                map[before.hash(band, row), default: []].append(row)
-            }
-            return map
-        }
-    }
-
-    func rows(_ band: Int, _ hash: UInt64) -> [Int] {
-        let rows = rowsByHash[band][hash] ?? []
-        return rows.count <= ScrollMatcher.maximumRepeats ? rows : []
-    }
-
-    /// 新帧的这个格子能不能当证据：有内容、在上一帧里不常见、和上一帧同一位置不同（不是没动的部分）
-    func isEvidence(_ after: RowCells, _ band: Int, _ row: Int) -> Bool {
-        guard after.isInformative(band, row) else { return false }
-        let hash = after.hash(band, row)
-        guard hash != before.hash(band, row) else { return false }
-        return (rowsByHash[band][hash]?.count ?? 0) <= ScrollMatcher.maximumRepeats
-    }
-}
-
-/// 每行每个竖条的哈希和"有没有内容"（平铺存放：竖条 × 行）
-struct RowCells {
-    let bands: Int
-    let height: Int
-    private(set) var hashes: [UInt64]
-    private(set) var informative: [Bool]
-
-    private static let basis: UInt64 = 14_695_981_039_346_656_037
-    private static let prime: UInt64 = 1_099_511_628_211
-
-    func hash(_ band: Int, _ row: Int) -> UInt64 {
-        hashes[band * height + row]
-    }
-
-    func isInformative(_ band: Int, _ row: Int) -> Bool {
-        informative[band * height + row]
-    }
-
-    init(_ frame: GrayFrame, bands columns: [[Int]]) {
-        bands = columns.count
-        height = frame.height
-        var hashes = [UInt64](repeating: 0, count: columns.count * frame.height)
-        var informative = [Bool](repeating: false, count: columns.count * frame.height)
-        let width = frame.width
-        let height = frame.height
-        frame.pixels.withUnsafeBufferPointer { pixels in
-            for (band, bandColumns) in columns.enumerated() {
-                bandColumns.withUnsafeBufferPointer { xs in
-                    for y in 0 ..< height {
-                        var hash = Self.basis
-                        var low: UInt8 = 255
-                        var high: UInt8 = 0
-                        let base = y * width
-                        for x in xs {
-                            let value = pixels[base + x]
-                            hash = (hash ^ UInt64(value)) &* Self.prime
-                            low = min(low, value)
-                            high = max(high, value)
+    init(_ first: GrayFrame, _ second: GrayFrame) {
+        rows = [Bool](repeating: false, count: first.height)
+        mask = [Bool](repeating: false, count: first.width * first.height)
+        guard first.width == second.width, first.height == second.height else { return }
+        let width = first.width
+        let tolerance = ScrollMatcher.tolerance
+        var changedPixels = 0
+        first.pixels.withUnsafeBufferPointer { a in
+            second.pixels.withUnsafeBufferPointer { b in
+                mask.withUnsafeMutableBufferPointer { mask in
+                    rows.withUnsafeMutableBufferPointer { rows in
+                        for y in 0 ..< first.height {
+                            let base = y * width
+                            var changed = false
+                            var x = 0
+                            while x < width {
+                                let delta = Int(a[base + x]) - Int(b[base + x])
+                                if delta > tolerance || delta < -tolerance {
+                                    mask[base + x] = true
+                                    changed = true
+                                    changedPixels += 1
+                                }
+                                x += 1
+                            }
+                            rows[y] = changed
                         }
-                        hashes[band * height + y] = hash
-                        informative[band * height + y] = high &- low > ScrollMatcher.contrast
                     }
                 }
             }
         }
-        self.hashes = hashes
-        self.informative = informative
+        pixels = changedPixels
     }
 }

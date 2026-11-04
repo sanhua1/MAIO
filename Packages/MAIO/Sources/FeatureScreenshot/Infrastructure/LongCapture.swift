@@ -23,6 +23,7 @@ extension GrayFrame {
 
 /// 收集每一帧要用的那段行，最后一次性合成（spec 4.6 第 5 条）。
 /// 每段立即复制成独立的小图，不持有整帧，内存只和最终长图差不多；同时保留一份缩小的，用于右侧的长条预览。
+/// 拼接位置由 `StitchPlan` 按绝对坐标决定（ADR-0014 修订三）：往下滚只写下半帧，往回滚不重复写。
 struct LongImageBuilder: @unchecked Sendable {
     private struct Part {
         var image: CGImage
@@ -33,6 +34,7 @@ struct LongImageBuilder: @unchecked Sendable {
 
     private(set) var plan: StitchPlan
     private var parts: [Int: Part] = [:]
+    private var frameCount = 1
     let width: Int
     /// 预览相对原图的缩放
     let previewScale: CGFloat
@@ -40,6 +42,7 @@ struct LongImageBuilder: @unchecked Sendable {
     /// previewWidth：预览图的宽度（像素）
     init(first: CGImage, previewWidth: Int = 320) {
         plan = StitchPlan(frameHeight: first.height)
+        plan.begin(frame: 0)
         width = first.width
         previewScale = min(1, CGFloat(previewWidth) / CGFloat(max(first.width, 1)))
         // 复制一份：视频流的帧来自系统的缓冲池，一直拿着会占用缓冲区
@@ -48,18 +51,26 @@ struct LongImageBuilder: @unchecked Sendable {
     }
 
     var height: Int {
-        plan.height
+        plan.canvasHeight
     }
 
-    mutating func append(_ frame: CGImage, shift: Int) {
-        let rows = StitchPlan.newRows(shift: shift, frameHeight: plan.frameHeight)
-        guard shift > 0, frame.width == width, frame.height == plan.frameHeight,
-              let strip = Self.copy(frame, rows: rows) else { return }
-        let index = plan.append(shift: shift)
-        parts[index] = Part(image: strip, thumbnail: Self.scaled(strip, by: previewScale) ?? strip, origin: rows.lowerBound)
-        // 被新帧完全覆盖的段不再需要
-        let used = plan.usedFrames
-        parts = parts.filter { used.contains($0.key) }
+    /// 接上相对上一帧滚动了 offset 行的一帧（正 = 往下滚）。返回是否有新内容。
+    @discardableResult
+    mutating func append(_ frame: CGImage, offset: Int) -> Bool {
+        guard frame.width == width, frame.height == plan.frameHeight else { return false }
+        let index = frameCount
+        switch plan.append(frame: index, offset: offset) {
+        case .inside:
+            return true
+        case let .written(rows):
+            guard let strip = Self.copy(frame, rows: rows) else { return false }
+            parts[index] = Part(image: strip, thumbnail: Self.scaled(strip, by: previewScale) ?? strip, origin: rows.lowerBound)
+            frameCount += 1
+            // 被覆盖的段不再需要
+            let used = plan.usedFrames
+            parts = parts.filter { used.contains($0.key) }
+            return true
+        }
     }
 
     /// 合成长图
@@ -74,16 +85,16 @@ struct LongImageBuilder: @unchecked Sendable {
 
     /// 按计划把各段画到一张图上。factor 是相对原图的缩放
     private func compose(factor: CGFloat, thumbnails: Bool) -> CGImage? {
-        let total = CGFloat(plan.height) * factor
+        let total = CGFloat(plan.canvasHeight) * factor
         let scaledWidth = CGFloat(width) * factor
         guard let context = Self.context(
-            width: Int(scaledWidth.rounded()), height: Int(total.rounded()), like: parts[0]?.image,
+            width: Int(scaledWidth.rounded()), height: Int(total.rounded()), like: parts.values.first?.image,
         ) else { return nil }
         context.interpolationQuality = .high
-        var top: CGFloat = 0
         for strip in plan.strips {
             guard let part = parts[strip.frame] else { continue }
             let fullHeight = CGFloat(plan.frameHeight - part.origin) * factor
+            let top = CGFloat(strip.top) * factor
             let start = CGFloat(strip.start - part.origin) * factor
             let stripHeight = CGFloat(strip.height) * factor
             // CGContext 原点在左下角：这一段画在从上往下 top 的位置
@@ -94,7 +105,6 @@ struct LongImageBuilder: @unchecked Sendable {
                 in: CGRect(x: 0, y: total - top + start - fullHeight, width: scaledWidth, height: fullHeight),
             )
             context.restoreGState()
-            top += stripHeight
         }
         return context.makeImage()
     }
