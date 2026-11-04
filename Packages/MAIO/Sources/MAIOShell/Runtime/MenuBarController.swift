@@ -34,6 +34,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             menu.addItem(entry)
         }
         menu.addItem(.separator())
+        menu.addItem(updateItem(controller.updater))
         menu.addItem(makeItem("设置…", #selector(openSettings), key: ","))
         menu.addItem(makeItem("退出 MAIO", #selector(quit), key: "q"))
     }
@@ -42,6 +43,25 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let menuItem = NSMenuItem(title: title, action: action, keyEquivalent: key)
         menuItem.target = self
         return menuItem
+    }
+
+    /// 下载好新版本时显示"安装更新"，否则"检查更新…"
+    private func updateItem(_ updater: Updater) -> NSMenuItem {
+        switch updater.state {
+        case let .ready(prepared):
+            makeItem("安装更新 \(prepared.release.version)…", #selector(checkForUpdates), key: "")
+        case let .downloading(version):
+            NSMenuItem(title: "正在下载更新 \(version)…", action: nil, keyEquivalent: "")
+        case .checking:
+            NSMenuItem(title: "正在检查更新…", action: nil, keyEquivalent: "")
+        default:
+            makeItem("检查更新…", #selector(checkForUpdates), key: "")
+        }
+    }
+
+    @objc private func checkForUpdates() {
+        guard let controller else { return }
+        Task { await controller.updater.check(userInitiated: true) }
     }
 
     @objc private func openSettings() {

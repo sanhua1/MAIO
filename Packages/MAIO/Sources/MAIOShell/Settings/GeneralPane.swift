@@ -40,12 +40,7 @@ struct GeneralPane: View {
                     Label(issue, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                 }
             }
-            Section("关于") {
-                LabeledContent(
-                    "版本",
-                    value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "开发版",
-                )
-            }
+            UpdateSection(updater: controller.updater)
         }
         .formStyle(.grouped)
         .navigationTitle("通用")

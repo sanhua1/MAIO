@@ -1,4 +1,5 @@
 import AppKit
+import MAIOUI
 import SwiftUI
 
 /// 剪贴板弹出面板：搜索框 + 历史列表 + 底部按键提示；按空格预览。
@@ -22,7 +23,7 @@ struct ClipboardPanelView: View {
             footer
         }
         .frame(width: Self.size.width, height: Self.size.height)
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .panelGlass(cornerRadius: 16)
         .onAppear { searchFocused = model.isSearching }
         .onChange(of: model.openToken) { _, _ in searchFocused = model.isSearching }
         // 等搜索框解除禁用后（下一轮刷新）再给焦点

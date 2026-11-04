@@ -11,7 +11,7 @@
 | `translate.input` | 无 | 打开空的输入框 |
 | `translate.text` | `text` | 契约 `TranslateTextContract`：打开窗口并翻译传入的文字（M5 截图 OCR 调用） |
 
-窗口内：回车翻译，⇧回车换行，Esc 关闭；📌 固定后失去焦点不关闭；每张结果卡片可以复制、折叠、失败时重试。
+窗口内：回车翻译，⇧回车换行，Esc 或 ⌘W 关闭；输入框和选中的译文里 ⌘A、⌘C、⌘V 等标准快捷键可用；📌 固定后失去焦点不关闭；每张结果卡片可以复制、折叠、失败时重试。
 
 ## 设置项（`config/features/translate.json`）
 

@@ -1,4 +1,5 @@
 import AppKit
+import MAIOUI
 import SwiftUI
 
 /// 切换面板：自动换行的网格，选中项高亮。
@@ -45,7 +46,7 @@ struct SwitcherPanelView: View {
             }
         }
         .padding(Self.padding)
-        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .panelGlass(cornerRadius: 22)
         .fixedSize()
     }
 }

@@ -47,5 +47,6 @@ let package = Package(
         .target(name: "MAIOTesting", dependencies: ["MAIOKit"], swiftSettings: strict),
         .testTarget(name: "MAIOKitTests", dependencies: ["MAIOKit"], swiftSettings: strict),
         .testTarget(name: "MAIOCoreTests", dependencies: ["MAIOCore", "MAIOTesting"], swiftSettings: strict),
+        .testTarget(name: "MAIOShellTests", dependencies: ["MAIOShell", "MAIOUI"], swiftSettings: strict),
     ] + featureTargets,
 )

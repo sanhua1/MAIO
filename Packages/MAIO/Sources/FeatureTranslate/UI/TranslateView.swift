@@ -17,7 +17,7 @@ struct TranslateView: View {
         }
         .padding(12)
         .frame(width: width)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        .panelGlass(cornerRadius: 18)
         .onAppear { inputFocused = true }
         .onChange(of: model.focusToken) { _, _ in inputFocused = true }
         .onExitCommand { model.onClose?() }

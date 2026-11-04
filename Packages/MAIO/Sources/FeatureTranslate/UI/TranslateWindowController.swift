@@ -93,6 +93,8 @@ final class TranslateWindowController {
         // 窗口大小始终等于 SwiftUI 内容大小（结果陆续出现时自动变高，didResize 保持左上角不动）
         panel.hostingView?.sizingOptions = [.intrinsicContentSize, .minSize, .maxSize]
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        // ⌘W 和点关闭按钮一样
+        panel.onCloseCommand = { [weak self] in self?.close() }
         let delegate = PanelDelegate(
             resignedKey: { [weak self] in self?.didResignKey() },
             moved: { [weak self] in self?.didMove() },

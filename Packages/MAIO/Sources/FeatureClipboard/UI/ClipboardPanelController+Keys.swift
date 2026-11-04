@@ -49,7 +49,7 @@ extension ClipboardPanelController {
         return true
     }
 
-    /// ⌘1–9 快速粘贴、⌘P 固定；其他 ⌘ 组合交给系统（例如 ⌘Q）
+    /// ⌘1–9 快速粘贴、⌘P 固定；其他 ⌘ 组合交给主菜单（例如 ⌘W 关闭面板）
     private func commandShortcut(_ event: NSEvent) -> Bool {
         guard let character = event.charactersIgnoringModifiers?.first else { return false }
         if let digit = character.wholeNumberValue {

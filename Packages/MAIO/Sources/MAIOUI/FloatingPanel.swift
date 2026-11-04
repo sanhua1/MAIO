@@ -26,9 +26,29 @@ public final class FloatingPanel<Content: View>: NSPanel {
         contentView = hosting
     }
 
+    /// 按 ⌘W（主菜单「窗口 › 关闭」）时调用，交给控制器走自己的关闭流程（取消请求、把焦点还给原来的 App 等）。
+    /// 无边框面板没有关闭按钮，系统默认的 `performClose` 什么也不做；不设置时 ⌘W 对这个面板无效。
+    public var onCloseCommand: (() -> Void)?
+
     /// 无边框窗口默认不能成为 key window（无法输入文字），需要键盘输入的面板要打开。
     override public var canBecomeKey: Bool {
         acceptsKeyboard || super.canBecomeKey
+    }
+
+    override public func performClose(_ sender: Any?) {
+        guard let onCloseCommand else {
+            super.performClose(sender)
+            return
+        }
+        onCloseCommand()
+    }
+
+    /// 系统按"有没有关闭按钮"判断「关闭」能不能用，无边框面板总是不能用（⌘W 不会发过来）
+    override public func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(performClose(_:)), onCloseCommand != nil {
+            return true
+        }
+        return super.validateMenuItem(menuItem)
     }
 
     public var hostingView: NSHostingView<Content>? {

@@ -1,4 +1,5 @@
 import AppKit
+import MAIOUI
 import SwiftUI
 
 /// 长截图的状态（右侧面板显示）
@@ -41,7 +42,7 @@ struct ScrollCaptureSidebar: View {
         }
         .padding(10)
         .frame(width: Self.width)
-        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+        .panelGlass(cornerRadius: 12)
         // 面板比内容高：内容贴着顶部，下面透明（点击会穿透）
         .frame(maxHeight: .infinity, alignment: .top)
     }

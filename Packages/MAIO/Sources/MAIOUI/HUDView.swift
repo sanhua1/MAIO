@@ -29,7 +29,7 @@ public struct HUDView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
         .frame(maxWidth: 420)
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .panelGlass(cornerRadius: 16)
         .padding(12)
     }
 }

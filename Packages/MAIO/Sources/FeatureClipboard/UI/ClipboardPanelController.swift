@@ -147,6 +147,8 @@ final class ClipboardPanelController {
         )
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        // ⌘W 直接关闭面板（和最后一次 Esc 一样，焦点还给原来的 App）
+        panel.onCloseCommand = { [weak self] in self?.close(restoreFocus: true) }
         let delegate = PanelDelegate { [weak self] in self?.close(restoreFocus: false) }
         panel.delegate = delegate
         self.delegate = delegate

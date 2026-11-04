@@ -4,6 +4,8 @@ SHELL := /bin/bash
 PKG       := Packages/MAIO
 BUILD_DIR := build
 APP       := $(BUILD_DIR)/Build/Products/Debug/MAIO.app
+# 发布签名证书（自签名，"MAIO Self-Signed Code Signing"）的 SHA-1。换证书会让所有用户的授权失效，见 ADR-0016
+SIGN_ID   := DCD134758750C8627302A10DBC898AAB7488877F
 XCODEBUILD := xcodebuild -project MAIO.xcodeproj -scheme MAIO -destination "platform=macOS,arch=arm64" -configuration Debug -derivedDataPath $(BUILD_DIR) -quiet
 
 .PHONY: bootstrap build test lint format format-check arch check run install release new-feature references clean
@@ -51,10 +53,15 @@ install: ## 构建并安装到 /Applications（登录启动建议使用安装版
 VERSION := $(shell sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)
 RELEASE_DIR := $(BUILD_DIR)/release
 
-release: MAIO.xcodeproj ## 打包发布版：临时签名（没有 Developer ID，不能公证），输出 build/release/MAIO-<版本>.zip
+release: MAIO.xcodeproj ## 打包发布版：自签名证书签名（ADR-0016），输出 build/release/MAIO-<版本>.zip
+	@security find-identity -p codesigning | grep -q "$(SIGN_ID)" || { echo "❌ 钥匙串里没有发布签名证书 $(SIGN_ID)：从 signing/MAIO-signing.p12 导入，见 docs/adr/0016-self-update-and-signing.md"; exit 1; }
 	@rm -rf $(RELEASE_DIR)
 	@xcodebuild -project MAIO.xcodeproj -scheme MAIO -destination "platform=macOS,arch=arm64" -configuration Release \
 		-derivedDataPath $(BUILD_DIR) -quiet build CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGN_STYLE=Manual
+	@codesign --force --options runtime --timestamp=none --entitlements App/MAIO.entitlements \
+		-s $(SIGN_ID) $(BUILD_DIR)/Build/Products/Release/MAIO.app
+	@codesign --verify --strict $(BUILD_DIR)/Build/Products/Release/MAIO.app
+	@codesign -d -r- $(BUILD_DIR)/Build/Products/Release/MAIO.app 2>&1 | grep -q "certificate leaf = H\"$$(echo $(SIGN_ID) | tr A-Z a-z)\"" || { echo "❌ 签名要求不对"; exit 1; }
 	@mkdir -p $(RELEASE_DIR)
 	@ditto -c -k --keepParent $(BUILD_DIR)/Build/Products/Release/MAIO.app $(RELEASE_DIR)/MAIO-$(VERSION).zip
 	@shasum -a 256 $(RELEASE_DIR)/MAIO-$(VERSION).zip
