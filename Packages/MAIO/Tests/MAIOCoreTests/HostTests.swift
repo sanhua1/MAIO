@@ -104,6 +104,20 @@ struct HostTests {
         #expect(bus.register(CommandDescriptor(id: "good.x", title: ""), owner: "good") { _ in .null })
         #expect(!bus.register(CommandDescriptor(id: "good.x", title: ""), owner: "bad") { _ in .null })
     }
+
+    @Test func `lists registered commands in catalog order`() {
+        let bus = CommandBus()
+        bus.describeFeatures([GoodFeature.manifest, NeedsScreenFeature.manifest])
+        bus.register(CommandDescriptor(id: "screen.shot", title: ""), owner: "screen") { _ in .null }
+        bus.register(CommandDescriptor(id: "good.extra", title: ""), owner: "good") { _ in .null }
+        bus.register(GoodFeature.manifest.commands[0], owner: "good") { _ in .null }
+        let listed = bus.availableCommands()
+        #expect(listed.map(\.id) == ["good.ping", "good.extra", "screen.shot"], "按目录顺序，manifest 里声明的在前")
+        #expect(listed.first?.featureName == "Good")
+        #expect(listed.last?.featureSymbol == "camera")
+        bus.unregisterAll(owner: "good")
+        #expect(bus.availableCommands().map(\.id) == ["screen.shot"])
+    }
 }
 
 @MainActor

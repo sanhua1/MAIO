@@ -91,19 +91,33 @@ struct FinderShortcutsPage: View {
             TextField("新建文件的名字", text: $value.newFileName)
         }
         if value.chord(for: .openTerminal) != nil {
-            Picker("终端", selection: $value.terminalBundleID) {
-                ForEach(terminalChoices) { Text($0.name).tag($0.bundleID) }
+            Picker("终端", selection: terminalSelection) {
+                ForEach(TerminalApp.choices(selected: value.terminalBundleID)) { Text($0.name).tag($0.bundleID) }
+                Divider()
+                Text("选择其他 App…").tag(Self.chooseOtherTag)
             }
         }
     }
 
-    private var terminalChoices: [TerminalApp] {
-        let installed = TerminalApp.installed
-        if installed.contains(where: { $0.bundleID == value.terminalBundleID }) {
-            return installed
-        }
-        // 设置里的终端被卸载了：仍然显示出来，避免选择器是空的
-        return installed + [TerminalApp(bundleID: value.terminalBundleID, name: value.terminalBundleID)]
+    private static let chooseOtherTag = "maio.chooseOtherTerminal"
+
+    /// 选"选择其他 App…"时弹出选择面板；取消就保持原来的终端
+    private var terminalSelection: Binding<String> {
+        Binding(
+            get: { value.terminalBundleID },
+            set: { choice in
+                if choice == Self.chooseOtherTag {
+                    // 等选择器的菜单关掉、这次界面更新结束后再弹面板
+                    Task { @MainActor in
+                        if let bundleID = TerminalApp.chooseOther() {
+                            value.terminalBundleID = bundleID
+                        }
+                    }
+                } else {
+                    value.terminalBundleID = choice
+                }
+            },
+        )
     }
 
     private func external(_ chord: KeyChord) -> [ShortcutOccupant] {

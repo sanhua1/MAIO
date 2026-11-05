@@ -50,6 +50,7 @@ public final class MAIORuntime {
                 permissions: permissions, overlay: overlay, events: events, shortcuts: shortcuts,
             ),
         )
+        commandBus.describeFeatures(host.manifests)
         commandBus.onFailure = { id, error in
             overlay.showError("\(id)：\(error.localizedDescription)")
         }

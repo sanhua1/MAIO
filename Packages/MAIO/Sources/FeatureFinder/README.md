@@ -85,7 +85,7 @@ FinderFocusMonitor：AXObserver + 0.5 秒轮询 → 焦点在文本框（AXTextF
 |---|---|---|
 | `shortcuts` | `{}` | 动作 ID → `{isEnabled, chord}`；没有的用默认值 |
 | `newFileName` | `新建文本文档.txt` | ⌥⌘N 新建的文件名 |
-| `terminalBundleID` | `com.apple.Terminal` | 设置页只列出已安装的终端 |
+| `terminalBundleID` | `com.apple.Terminal` | 设置页列出已安装的常见终端（终端、Otty、iTerm2、Ghostty、Warp、kitty、WezTerm、Tabby、Hyper、Wave），也可以"选择其他 App…"；启动方式是用这个 App 打开文件夹 |
 | `cheatSheetEnabled` / `cheatSheetDelay` | `true` / `0.8` | 速查面板 |
 | `hiddenContextMenuItems` | `[]` | 右键菜单里关掉的项 |
 

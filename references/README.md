@@ -29,6 +29,9 @@
 | [snow-apps](https://github.com/mg-chao/snow-apps)（Snow Shot） | GPL-3.0-or-later（snow_shot、snow-crates） | 截图（M5）：**长截图**的偏移估计与拼接，只学思路 | `snow-crates/crates/snow-stitch-images/src/estimator.rs`（候选投票、证据打分、验收门槛）、`compositor.rs`（新帧底部一段覆盖画布末尾）、`stitcher.rs`（对不上时参照帧不前进）、`snow_shot/src/presentation/capture/screenshotscrollingpipeline.cpp`（视频流 + 只留最新一帧）、`adaptivescrollingcapturecadence.h` |
 | [eSearch](https://github.com/xushengfeng/eSearch) | GPL-3.0 | 截图（M5）：长截图的另一种做法（FFT 相位相关，不检查置信度——反面教材） | `src/renderer/clip/clip_window.ts`（`startLongInput`、`longMatch`、`longPutImg`） |
 | [LinearMouse](https://github.com/linearmouse/linearmouse) | MIT | 修饰键 + 滚轮模拟触控板捏合缩放（已用于 `FeatureScroll`） | `Modules/GestureKit/Sources/GestureKit/`（手势事件的私有字段、`GestureEvent+Zoom.swift`）、`LinearMouse/EventTransformer/ModifierActionsTransformer.swift`（began / changed / ended 的时机、每像素缩放量） |
+| [oil-find](https://github.com/oil-oil/oil-find) | MIT | 启动器（M7）：**文件索引的主要参考**（Swift + 薄 C 层，接近生产级）：getattrlistbulk 并行扫描、firmlink、SoA 布局约 46B/条、名称连成一块 + NEON 初筛、越打越窄、匹配质量排序、拼音备用键、FSEvents（事件库 UUID、先开流再扫描后对账、子树标记清除）、索引存盘 | `Sources/COilFind/coilfind.c`、`Scanner.swift`、`Searcher.swift`、`Query.swift`、`Pinyin.swift`、`FSWatcher.swift`、`IndexUpdater.swift`、`IndexManager.swift`、`IndexStore+*.swift`、`docs/ARCHITECTURE.md` |
+| [Cardinal](https://github.com/cardisoft/cardinal) | MIT | 启动器（M7）：**Everything 语法**（解析、优先级、过滤器执行顺序）、按 `/` 切段的路径匹配规则、FSEvents"最小祖先覆盖"合并重扫、默认忽略目录 | `cardinal-syntax/src/lib.rs`、`doc/pub/search-syntax.md`、`query-segmentation/`、`search-cache/src/cache.rs`（事件应用 919-1043）、`cardinal/src/hooks/useIgnorePaths.ts` |
+| [MacEverything](https://github.com/joshua-wu/MacEverything) | MIT | 启动器（M7）：只作对照。**反面教材**：每个文件存完整路径、三字母组倒排太占内存、目录改名不处理子树、回放流和实时流之间有空窗 | `MacEverything/Core/SearchEngineAdvancedQuery.cpp`（扩展名索引、候选集竞争） |
 
 ## 计划中（到对应里程碑再拉取）
 

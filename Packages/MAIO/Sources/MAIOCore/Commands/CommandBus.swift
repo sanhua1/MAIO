@@ -13,6 +13,8 @@ public final class CommandBus {
     }
 
     private var entries: [CommandID: Entry] = [:]
+    /// 功能目录（列出命令时用来排序、给出功能名）
+    @ObservationIgnored private var manifests: [FeatureManifest] = []
     @ObservationIgnored private var changeHandlers: [() -> Void] = []
     @ObservationIgnored private let logger = Logger(subsystem: "app.maio", category: "commands")
 
@@ -27,6 +29,40 @@ public final class CommandBus {
 
     public func isAvailable(_ id: CommandID) -> Bool {
         entries[id] != nil
+    }
+
+    /// 宿主启动时传入功能目录
+    public func describeFeatures(_ manifests: [FeatureManifest]) {
+        self.manifests = manifests
+    }
+
+    /// 已注册的命令：按功能在目录里的顺序，功能内按 manifest 声明的顺序，未声明的按 ID 排在最后（ADR-0021）
+    public func availableCommands() -> [AvailableCommand] {
+        var remaining = entries
+        var result: [AvailableCommand] = []
+        for manifest in manifests {
+            let owned = remaining.values.filter { $0.owner == manifest.id }
+            let order = Dictionary(manifest.commands.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+            let sorted = owned.sorted { lhs, rhs in
+                let left = order[lhs.descriptor.id] ?? Int.max
+                let right = order[rhs.descriptor.id] ?? Int.max
+                return left != right ? left < right : lhs.descriptor.id.rawValue < rhs.descriptor.id.rawValue
+            }
+            for entry in sorted {
+                remaining[entry.descriptor.id] = nil
+                result.append(AvailableCommand(
+                    descriptor: entry.descriptor, featureID: manifest.id,
+                    featureName: manifest.displayName, featureSymbol: manifest.symbol,
+                ))
+            }
+        }
+        let unknown = remaining.values.sorted { $0.descriptor.id.rawValue < $1.descriptor.id.rawValue }
+        return result + unknown.map { entry in
+            AvailableCommand(
+                descriptor: entry.descriptor, featureID: entry.owner,
+                featureName: entry.owner.rawValue, featureSymbol: "command",
+            )
+        }
     }
 
     public func addChangeHandler(_ handler: @escaping () -> Void) {
@@ -107,5 +143,9 @@ private final class ScopedCommandRegistrar: CommandRegistrar {
 
     func isAvailable(_ id: CommandID) -> Bool {
         bus.isAvailable(id)
+    }
+
+    func availableCommands() -> [AvailableCommand] {
+        bus.availableCommands()
     }
 }

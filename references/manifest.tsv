@@ -11,3 +11,6 @@ pinlume	https://github.com/pinlume/pinlume.git	82278e17	GPL-3.0
 snow-apps	https://github.com/mg-chao/snow-apps.git	a645e0e870	GPL-3.0-or-later (snow_shot, snow-crates)
 eSearch	https://github.com/xushengfeng/eSearch.git	c0b8085a6b	GPL-3.0
 LinearMouse	https://github.com/linearmouse/linearmouse.git	a1e33ed882	MIT
+cardinal	https://github.com/cardisoft/cardinal.git	4c50734f9a	MIT
+oil-find	https://github.com/oil-oil/oil-find.git	8f7b9db9e9	MIT
+MacEverything	https://github.com/joshua-wu/MacEverything.git	26f0332c05	MIT

@@ -26,6 +26,16 @@ public final class FakeCommandRegistrar: CommandRegistrar {
     public func isAvailable(_ id: CommandID) -> Bool {
         handlers[id] != nil
     }
+
+    /// 注册过的命令（按 ID 排序；功能名用功能 ID 代替）
+    public func availableCommands() -> [AvailableCommand] {
+        descriptors.values.sorted { $0.id.rawValue < $1.id.rawValue }.map { descriptor in
+            AvailableCommand(
+                descriptor: descriptor, featureID: descriptor.id.featureID,
+                featureName: descriptor.id.featureID.rawValue, featureSymbol: "command",
+            )
+        }
+    }
 }
 
 /// 记录所有合成事件。

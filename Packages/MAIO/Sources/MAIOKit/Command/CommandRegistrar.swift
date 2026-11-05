@@ -14,6 +14,8 @@ public protocol CommandRegistrar: AnyObject {
     @discardableResult
     func perform(_ id: CommandID, arguments: CommandArguments) async throws -> JSONValue
     func isAvailable(_ id: CommandID) -> Bool
+    /// 当前能执行的全部命令（已启用的功能实际注册了的），按功能在目录里的顺序排列（ADR-0021）
+    func availableCommands() -> [AvailableCommand]
 }
 
 public extension CommandRegistrar {
