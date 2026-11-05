@@ -11,6 +11,7 @@ let features: [String] = [
     "Translate",
     "Clipboard",
     "Screenshot",
+    "Finder",
     // @new-feature-marker
 ]
 

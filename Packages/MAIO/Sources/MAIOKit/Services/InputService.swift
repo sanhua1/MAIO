@@ -21,6 +21,21 @@ public enum FilterStage: Int, Sendable, Comparable, CaseIterable {
     }
 }
 
+/// 在键盘 tap 线程上同步调用的按键过滤器（ADR-0017）。收到 keyDown（包括按住产生的重复）和 flagsChanged；
+/// flagsChanged 只能观察，返回值被忽略。
+/// 位置在键盘会话、快捷键录制之后，快捷键匹配之前。约束同 `RealtimeInputFilter`。
+public protocol RealtimeKeyFilter: Sendable {
+    func process(_ event: KeyEvent, _ environment: RealtimeEnvironment) -> KeyFilterDecision
+}
+
+public enum KeyFilterDecision: Sendable, Hashable {
+    case pass
+    /// 吞掉这个键（对应的 keyUp 也会被吞掉）
+    case consume
+    /// 吞掉这个键，立即改发另一个组合键（合成事件不会再经过过滤器）
+    case replace(KeyChord)
+}
+
 public struct FilterToken: Sendable, Hashable {
     public let rawValue: UInt64
     public init(rawValue: UInt64) {
@@ -44,6 +59,9 @@ public protocol KeyboardSession: AnyObject, Sendable {
 public protocol InputService: AnyObject {
     func beginKeyboardSession() -> any KeyboardSession
     func registerFilter(_ filter: any RealtimeInputFilter, for kind: PointerEventKind, stage: FilterStage) -> FilterToken
+    /// 注册按键过滤器（ADR-0017）。按注册顺序执行，第一个不是 `pass` 的结果生效
+    func registerKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken
+    /// 注销指针过滤器或按键过滤器
     func removeFilter(_ token: FilterToken)
     var poster: any SyntheticEventPoster { get }
 }

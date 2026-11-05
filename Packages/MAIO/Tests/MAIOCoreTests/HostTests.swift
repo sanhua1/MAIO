@@ -47,6 +47,14 @@ final class NeedsScreenFeature: Feature {
 
 @MainActor
 struct HostTests {
+    static func shortcuts(_ config: ConfigStore) -> FeatureShortcutDirectory.Sources {
+        FeatureShortcutDirectory.Sources(
+            bindings: BindingStore(config: config),
+            systemShortcuts: SystemShortcutManager(store: FakeSystemShortcutStore([]), config: config),
+            reservations: ShortcutReservations(), commandTitle: { $0.rawValue },
+        )
+    }
+
     private func makeRuntime(granted: Set<Permission> = Set(Permission.allCases)) -> (FeatureHost, CommandBus, ConfigStore) {
         let root = FileManager.default.temporaryDirectory.appending(path: "maio-host-\(UUID().uuidString)")
         let config = ConfigStore(root: root)
@@ -56,6 +64,7 @@ struct HostTests {
             services: .init(
                 config: config, commandBus: bus, input: InputEngine { _ in },
                 permissions: FakePermissions(granted: granted), overlay: RecordingOverlay(), events: FakeSystemEvents(),
+                shortcuts: Self.shortcuts(config),
             ),
         )
         return (host, bus, config)
@@ -83,6 +92,7 @@ struct HostTests {
             services: .init(
                 config: config, commandBus: bus, input: InputEngine { _ in },
                 permissions: FakePermissions(), overlay: RecordingOverlay(), events: FakeSystemEvents(),
+                shortcuts: Self.shortcuts(config),
             ),
         )
         #expect(!reloaded.isEnabled("good"))
@@ -153,5 +163,24 @@ struct FeatureSettingsTests {
         try config.write(["schemaVersion": 1, "value": ["velocity": 3]], to: "config/features/demo.json")
         let store = FeatureSettingsStore(featureID: "demo", config: config)
         #expect(store.load(Sample.self) == Sample(speed: 3, newField: "default"))
+    }
+}
+
+@MainActor
+struct ShortcutDirectoryTests {
+    @Test func `features see each other's reservations but not their own`() throws {
+        let config = ConfigStore(root: FileManager.default.temporaryDirectory.appending(path: "maio-dir-\(UUID().uuidString)"))
+        let sources = HostTests.shortcuts(config)
+        let finder = FeatureShortcutDirectory(featureID: "finder", sources: sources)
+        let other = FeatureShortcutDirectory(featureID: "other", sources: sources)
+        let chord = try #require(KeyChord(string: "cmd+x"))
+        finder.reserve([ReservedShortcut(chord: chord, scope: .onlyIn(["com.apple.finder"]), title: "剪切")])
+        #expect(finder.occupants(of: chord, scope: .global).isEmpty)
+        #expect(other.occupants(of: chord, scope: .global).map(\.title) == ["剪切"])
+        #expect(other.occupants(of: chord, scope: .onlyIn(["com.apple.Safari"])).isEmpty, "作用范围不重叠")
+        sources.bindings.upsert(CommandBinding(id: "b", trigger: .hotkey(chord), command: "other.do"))
+        #expect(finder.occupants(of: chord, scope: .onlyIn(["com.apple.finder"])).map(\.kind) == [.binding])
+        finder.tearDown()
+        #expect(other.occupants(of: chord, scope: .global).isEmpty, "停用后清空登记")
     }
 }

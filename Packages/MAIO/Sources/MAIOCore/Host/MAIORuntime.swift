@@ -14,6 +14,8 @@ public final class MAIORuntime {
     public let permissions: SystemPermissions
     public let events: WorkspaceEvents
     public let systemShortcuts: SystemShortcutManager
+    /// 各功能登记占用的按键（ADR-0018）
+    public let reservations = ShortcutReservations()
 
     public init(
         catalog: [any Feature.Type],
@@ -36,11 +38,16 @@ public final class MAIORuntime {
         self.permissions = permissions
         self.events = events
         self.input = input
+        let commands = catalog.flatMap { type in type.manifest.commands }
+        let shortcuts = FeatureShortcutDirectory.Sources(
+            bindings: bindings, systemShortcuts: systemShortcuts, reservations: reservations,
+            commandTitle: { id in commands.first { $0.id == id }?.title ?? id.rawValue },
+        )
         host = FeatureHost(
             catalog: catalog,
             services: .init(
                 config: config, commandBus: commandBus, input: input,
-                permissions: permissions, overlay: overlay, events: events,
+                permissions: permissions, overlay: overlay, events: events, shortcuts: shortcuts,
             ),
         )
         commandBus.onFailure = { id, error in

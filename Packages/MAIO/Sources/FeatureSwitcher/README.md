@@ -62,6 +62,8 @@ alt-tab-macos（GPL-3.0，只借鉴思路、独立实现）：
 ## 已知限制
 
 - **只显示当前桌面（Space）的窗口**：`kAXWindows` 不返回其他桌面的窗口。alt-tab-macos 用私有 API 实现了跨桌面，代价高，暂不做。
+- App 暂时不响应辅助功能查询（刚启动约 1 秒内、正忙；实测「预览」刚打开文件时会这样）：用屏幕窗口列表（CGWindowList）顶替它在屏幕上的窗口，
+  切换时再按窗口 ID 补查辅助功能元素，仍查不到就只用 SkyLight 切换。这种情况下它的最小化窗口不会出现。
 - 排序用屏幕叠放顺序近似"最近使用"；不在屏幕上的窗口按 App 最近使用顺序排列。
 - 切换到具体窗口使用 SkyLight 私有函数（ADR-0008 修订），并在 150ms 后检查、必要时重试。排查问题时看日志：
   `/usr/bin/log show --last 10m --predicate 'subsystem == "app.maio" AND category == "switcher"' --info`

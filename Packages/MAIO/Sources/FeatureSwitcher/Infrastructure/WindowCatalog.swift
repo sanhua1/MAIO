@@ -35,11 +35,13 @@ enum WindowCatalog {
     }
 
     private static func collect(_ apps: [AppInfo]) -> Snapshot {
-        let zOrder = onScreenZOrder()
+        let screen = onScreenWindows()
+        let zOrder = Dictionary(screen.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
         var records: [WindowRecord] = []
         var elements: [UInt32: AXElementBox] = [:]
         for app in apps {
-            let windows = windows(of: app.pid)
+            // App 暂时不响应辅助功能查询（刚启动、正忙）时，用屏幕上的窗口顶替，不让它整个从列表里消失
+            let windows = windows(of: app.pid) ?? fallbackWindows(of: app.pid, from: screen)
             if windows.isEmpty {
                 records.append(WindowRecord(
                     pid: app.pid, appName: app.name, bundleID: app.bundleID, windowID: nil, title: "",
@@ -48,7 +50,9 @@ enum WindowCatalog {
             }
             for window in windows {
                 let (id, title, minimized) = (window.id, window.title, window.isMinimized)
-                elements[id] = AXElementBox(element: window.element)
+                if let element = window.element {
+                    elements[id] = AXElementBox(element: element)
+                }
                 records.append(WindowRecord(
                     pid: app.pid, appName: app.name, bundleID: app.bundleID, windowID: id, title: title,
                     isMinimized: minimized, isAppHidden: app.isHidden,
@@ -61,36 +65,74 @@ enum WindowCatalog {
 
     private struct AXWindow {
         let id: UInt32
-        let element: AXUIElement
+        /// 用屏幕窗口列表顶替时为 nil，切换时再按窗口 ID 查（`element(pid:windowID:)`）
+        let element: AXUIElement?
         let title: String
         let isMinimized: Bool
     }
 
-    private static func windows(of pid: Int32) -> [AXWindow] {
-        let app = AXUIElementCreateApplication(pid)
-        AXUIElementSetMessagingTimeout(app, AXHelper.messagingTimeout)
-        guard let list: [AXUIElement] = AXHelper.attribute(app, kAXWindowsAttribute) else { return [] }
+    /// nil 表示查询失败（超时、App 不响应），和"没有窗口"（空数组）不同
+    private static func windows(of pid: Int32) -> [AXWindow]? {
+        guard let list = axWindows(of: pid) else { return nil }
         return list.compactMap { window in
             guard AXHelper.attribute(window, kAXRoleAttribute, as: String.self) == kAXWindowRole,
                   let id = AXHelper.windowID(of: window) else { return nil }
             let subrole = AXHelper.attribute(window, kAXSubroleAttribute, as: String.self)
             let title = AXHelper.attribute(window, kAXTitleAttribute, as: String.self) ?? ""
             let isStandard = subrole == kAXStandardWindowSubrole || (subrole == kAXDialogSubrole && !title.isEmpty)
-            guard isStandard, let size = AXHelper.size(of: window), size.width >= 100, size.height >= 50 else { return nil }
+            guard isStandard, let size = AXHelper.size(of: window), isLargeEnough(size) else { return nil }
             let minimized = AXHelper.attribute(window, kAXMinimizedAttribute, as: Bool.self) ?? false
             return AXWindow(id: id, element: window, title: title, isMinimized: minimized)
         }
     }
 
-    /// 屏幕上普通层级窗口的叠放顺序（0 = 最前）。
-    private static func onScreenZOrder() -> [UInt32: Int] {
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [:] }
-        var order: [UInt32: Int] = [:]
-        for info in list where (info[kCGWindowLayer as String] as? Int) == 0 {
-            guard let id = info[kCGWindowNumber as String] as? UInt32, order[id] == nil else { continue }
-            order[id] = order.count
+    private static func axWindows(of pid: Int32) -> [AXUIElement]? {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, AXHelper.messagingTimeout)
+        var value: CFTypeRef?
+        let error = AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value)
+        switch error {
+        case .success: return value as? [AXUIElement] ?? []
+        // 没有窗口的 App 有时返回这两个错误，不算"不响应"
+        case .noValue, .attributeUnsupported: return []
+        default: return nil
         }
-        return order
+    }
+
+    /// 查询失败时的替补：这个 App 在屏幕上的普通窗口。拿不到最小化的窗口和标题以外的信息，但至少能切过去。
+    private static func fallbackWindows(of pid: Int32, from screen: [ScreenWindow]) -> [AXWindow] {
+        screen.filter { $0.pid == pid && isLargeEnough($0.size) }
+            .map { AXWindow(id: $0.id, element: nil, title: $0.title, isMinimized: false) }
+    }
+
+    private static func isLargeEnough(_ size: CGSize) -> Bool {
+        size.width >= 100 && size.height >= 50
+    }
+
+    /// 切换时补查替补窗口的辅助功能元素（这时 App 通常已经恢复响应）
+    static func element(pid: Int32, windowID: UInt32) -> AXUIElement? {
+        axWindows(of: pid)?.first { AXHelper.windowID(of: $0) == windowID }
+    }
+
+    private struct ScreenWindow {
+        let id: UInt32
+        let pid: Int32
+        let title: String
+        let size: CGSize
+    }
+
+    /// 屏幕上的普通层级窗口，按叠放顺序（第一个 = 最前）。
+    private static func onScreenWindows() -> [ScreenWindow] {
+        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
+        return list.compactMap { info in
+            guard (info[kCGWindowLayer as String] as? Int) == 0,
+                  let id = info[kCGWindowNumber as String] as? UInt32,
+                  let pid = info[kCGWindowOwnerPID as String] as? Int32 else { return nil }
+            let bounds = (info[kCGWindowBounds as String] as? NSDictionary)
+                .flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) } ?? .zero
+            let title = info[kCGWindowName as String] as? String ?? ""
+            return ScreenWindow(id: id, pid: pid, title: title, size: bounds.size)
+        }
     }
 }

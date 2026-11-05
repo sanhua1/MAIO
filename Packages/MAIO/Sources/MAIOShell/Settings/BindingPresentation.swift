@@ -144,6 +144,8 @@ struct BindingStatus: View {
             StatusBadge("不可用", tone: .warning).help("提供该命令的功能未启用")
         } else if !controller.runtime.bindings.conflicts(with: binding).isEmpty {
             StatusBadge("冲突", tone: .negative).help("另一个已启用的绑定使用了相同的快捷键")
+        } else if let reserved = controller.featureReservations(for: binding).first {
+            StatusBadge("部分 App 中被占用", tone: .warning).help("被\(reserved)占用，在那里不会触发这个绑定")
         } else if let system = controller.systemConflicts(for: binding).first {
             Button {
                 controller.showSettings(pane: .systemShortcuts)

@@ -23,4 +23,26 @@ extension MAIOAppController {
         let title = commandCatalog.flatMap(\.commands).first { $0.id == binding.command }?.title ?? binding.command.rawValue
         return "MAIO：\(binding.trigger.displayString) → \(binding.title ?? title)"
     }
+
+    /// 其他功能在某些 App 里占用了这个绑定的组合键（ADR-0018），例如 Finder 增强在 Finder 里的改键。
+    /// 返回的文字形如"Finder 增强：剪切（在 Finder 里）"
+    func featureReservations(for binding: CommandBinding) -> [String] {
+        guard binding.isEnabled, case let .hotkey(chord) = binding.trigger else { return [] }
+        return runtime.reservations.reservations(of: chord, scope: binding.scope).map { entry in
+            let name = runtime.host.manifests.first { $0.id == entry.feature }?.displayName ?? entry.feature.rawValue
+            return "\(name)：\(entry.shortcut.title)\(Self.scopeDescription(entry.shortcut.scope))"
+        }
+    }
+
+    private static func scopeDescription(_ scope: BindingScope) -> String {
+        switch scope {
+        case .global: ""
+        case let .onlyIn(apps): "（在 " + apps.map(appName).joined(separator: "、") + " 里）"
+        case .exceptIn: "（部分 App）"
+        }
+    }
+
+    private static func appName(_ bundleID: String) -> String {
+        bundleID == "com.apple.finder" ? "Finder" : bundleID
+    }
 }

@@ -35,6 +35,10 @@ struct BindingEditor: View {
                         Label("与 \(conflicts.count) 个已启用的 MAIO 绑定冲突", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.orange)
                     }
+                    ForEach(controller.featureReservations(for: result), id: \.self) { text in
+                        Label("被\(text)占用：在那里优先由该功能处理，不会触发这个绑定", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                    }
                     ForEach(systemConflicts) { shortcut in
                         Label(
                             "覆盖系统快捷键「\(shortcut.info.name)」（\(shortcut.displayString)）：MAIO 运行时由 MAIO 接管",

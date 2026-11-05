@@ -58,9 +58,13 @@ release: MAIO.xcodeproj ## 打包发布版：自签名证书签名（ADR-0016）
 	@rm -rf $(RELEASE_DIR)
 	@xcodebuild -project MAIO.xcodeproj -scheme MAIO -destination "platform=macOS,arch=arm64" -configuration Release \
 		-derivedDataPath $(BUILD_DIR) -quiet build CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= CODE_SIGN_STYLE=Manual
+	@# 由内向外签：先签 Finder 右键菜单扩展（带它自己的沙盒权限），再签主程序
+	@codesign --force --options runtime --timestamp=none --entitlements FinderSync/FinderSync.entitlements \
+		-s $(SIGN_ID) $(BUILD_DIR)/Build/Products/Release/MAIO.app/Contents/PlugIns/MAIOFinderSync.appex
 	@codesign --force --options runtime --timestamp=none --entitlements App/MAIO.entitlements \
 		-s $(SIGN_ID) $(BUILD_DIR)/Build/Products/Release/MAIO.app
-	@codesign --verify --strict $(BUILD_DIR)/Build/Products/Release/MAIO.app
+	@codesign --verify --deep --strict $(BUILD_DIR)/Build/Products/Release/MAIO.app
+	@codesign -d --entitlements - $(BUILD_DIR)/Build/Products/Release/MAIO.app/Contents/PlugIns/MAIOFinderSync.appex 2>&1 | grep -q app-sandbox || { echo "❌ Finder 扩展缺少沙盒权限"; exit 1; }
 	@codesign -d -r- $(BUILD_DIR)/Build/Products/Release/MAIO.app 2>&1 | grep -q "certificate leaf = H\"$$(echo $(SIGN_ID) | tr A-Z a-z)\"" || { echo "❌ 签名要求不对"; exit 1; }
 	@mkdir -p $(RELEASE_DIR)
 	@ditto -c -k --keepParent $(BUILD_DIR)/Build/Products/Release/MAIO.app $(RELEASE_DIR)/MAIO-$(VERSION).zip

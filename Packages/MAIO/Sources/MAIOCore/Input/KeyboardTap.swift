@@ -13,9 +13,11 @@ final class KeyboardTap: Sendable {
 
     private let state = Mutex(State())
     private let onFire: @Sendable (CommandBinding) -> Void
+    private let poster: any SyntheticEventPoster
     private let runnerBox = Mutex<EventTapRunner?>(nil)
 
-    init(onFire: @escaping @Sendable (CommandBinding) -> Void) {
+    init(poster: any SyntheticEventPoster, onFire: @escaping @Sendable (CommandBinding) -> Void) {
+        self.poster = poster
         self.onFire = onFire
     }
 
@@ -61,6 +63,14 @@ final class KeyboardTap: Sendable {
         }
     }
 
+    func add(_ entry: KeyFilterEntry) {
+        state.withLock { $0.router.filters.append(entry) }
+    }
+
+    func removeFilter(_ token: FilterToken) {
+        state.withLock { $0.router.filters.removeAll { $0.token == token } }
+    }
+
     func beginSession() -> EngineKeyboardSession {
         let session = EngineKeyboardSession { [weak self] ended in
             self?.state.withLock { state in
@@ -93,6 +103,8 @@ final class KeyboardTap: Sendable {
         case let .toSession(keyEvent): session?.yield(keyEvent)
         case let .toRecorder(chord): recorder?(chord)
         case let .fire(binding): onFire(binding)
+        // 在 tap 线程上立即发出，保证排在后面的真实按键之前
+        case let .post(chord): poster.post(.keyStroke(chord))
         case nil: break
         }
         return decision.consume ? nil : Unmanaged.passUnretained(event)

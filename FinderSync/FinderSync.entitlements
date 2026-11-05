@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App 扩展必须开沙盒 -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- 只读：主程序写的右键菜单配置（data/finder/context-menu.json） -->
+	<key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+	<array>
+		<string>/Library/Application Support/MAIO/data/finder/</string>
+	</array>
+</dict>
+</plist>

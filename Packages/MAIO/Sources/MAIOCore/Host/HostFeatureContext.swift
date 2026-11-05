@@ -14,6 +14,11 @@ final class HostFeatureContext: FeatureContext {
     let overlay: any OverlayService
     let events: any SystemEventService
     let logger: Logger
+    private let shortcutDirectory: FeatureShortcutDirectory
+    var shortcuts: any ShortcutDirectory {
+        shortcutDirectory
+    }
+
     private let scopedInput: ScopedInputService
     var input: any InputService {
         scopedInput
@@ -30,10 +35,12 @@ final class HostFeatureContext: FeatureContext {
         events = services.events
         logger = Logger(subsystem: "app.maio", category: featureID.rawValue)
         scopedInput = ScopedInputService(engine: services.input)
+        shortcutDirectory = FeatureShortcutDirectory(featureID: featureID, sources: services.shortcuts)
     }
 
     func tearDown() {
         scopedInput.tearDown()
+        shortcutDirectory.tearDown()
     }
 }
 
@@ -60,6 +67,12 @@ final class ScopedInputService: InputService {
 
     func registerFilter(_ filter: any RealtimeInputFilter, for _: PointerEventKind, stage: FilterStage) -> FilterToken {
         let token = engine.addFilter(filter, stage: stage)
+        tokens.insert(token)
+        return token
+    }
+
+    func registerKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken {
+        let token = engine.addKeyFilter(filter)
         tokens.insert(token)
         return token
     }

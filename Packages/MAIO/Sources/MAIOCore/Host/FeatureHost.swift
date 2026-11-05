@@ -21,6 +21,7 @@ public final class FeatureHost {
         let permissions: any PermissionService
         let overlay: any OverlayService
         let events: any SystemEventService
+        let shortcuts: FeatureShortcutDirectory.Sources
     }
 
     public let catalog: [any Feature.Type]

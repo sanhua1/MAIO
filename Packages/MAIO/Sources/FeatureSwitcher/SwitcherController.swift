@@ -235,7 +235,8 @@ final class SwitcherController {
     }
 
     private func element(for item: SwitcherItem) -> AXUIElement? {
-        item.windowID.flatMap { active?.elements[$0]?.element }
+        guard let windowID = item.windowID else { return nil }
+        return active?.elements[windowID]?.element ?? WindowCatalog.element(pid: item.pid, windowID: windowID)
     }
 
     // MARK: 兜底

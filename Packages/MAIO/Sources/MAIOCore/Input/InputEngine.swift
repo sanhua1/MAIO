@@ -26,7 +26,7 @@ public final class InputEngine {
 
     /// `onBinding` 在主线程上调用。
     public init(onBinding: @escaping @MainActor (CommandBinding) -> Void) {
-        keyboard = KeyboardTap { binding in
+        keyboard = KeyboardTap(poster: poster) { binding in
             Task { @MainActor in onBinding(binding) }
         }
     }
@@ -85,8 +85,16 @@ public final class InputEngine {
         return token
     }
 
+    func addKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken {
+        let token = FilterToken(rawValue: nextFilterToken)
+        nextFilterToken += 1
+        keyboard.add(KeyFilterEntry(token: token, filter: filter))
+        return token
+    }
+
     func removeFilter(_ token: FilterToken) {
         pointer.remove(token)
+        keyboard.removeFilter(token)
         refreshPointerTap()
     }
 

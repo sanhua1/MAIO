@@ -16,10 +16,18 @@ enum WindowActions {
         if app.isHidden {
             app.unhide()
         }
-        guard let element, let windowID = item.windowID else {
+        guard let windowID = item.windowID else {
             // 没有窗口的 App：激活即可（会打开它的默认窗口）
             app.activate(options: [.activateAllWindows])
             logger.notice("切换：\(item.appName, privacy: .public)（无窗口，激活 App）")
+            return
+        }
+        guard let element = element ?? WindowCatalog.element(pid: item.pid, windowID: windowID) else {
+            // App 仍不响应辅助功能查询：只能按窗口 ID 用 SkyLight 切过去
+            if !SkyLightFocus.focus(pid: app.processIdentifier, windowID: windowID) {
+                app.activate(options: [])
+            }
+            logger.notice("切换：\(item.appName, privacy: .public) #\(windowID)（无辅助功能元素）")
             return
         }
         if item.isMinimized {

@@ -92,6 +92,7 @@ mac-all-in-one/
 ├── Config/                    # Base.xcconfig；Signing.local.xcconfig（本机签名，不进 git）
 ├── project.yml                # XcodeGen 配置，.xcodeproj 由它生成，不提交 git
 │
+├── FinderSync/                # Finder 右键菜单扩展（沙盒，只显示菜单，动作交回主程序，ADR-0019）
 ├── App/                       # 很薄的 App 壳
 │   ├── MAIOApp.swift          # @main，菜单栏 App（LSUIElement）
 │   ├── FeatureCatalog.swift   # ★ 注册所有功能的唯一位置
@@ -200,6 +201,7 @@ public protocol FeatureContext {
     var permissions: PermissionService { get }
     var overlay: OverlayService { get }         // 浮动面板、HUD、提示
     var events: SystemEventService { get }      // 前台 App 变化、外观变化等系统事实
+    var shortcuts: ShortcutDirectory { get }    // 快捷键占用查询与登记（冲突检测，ADR-0018）
     var logger: Logger { get }                  // 已按 featureID 分类的 os.Logger
 }
 ```
@@ -320,6 +322,8 @@ let token = context.input.registerFilter(myFilter, for: .scrollWheel, stage: .tr
 
 - 过滤器按固定阶段排序执行：`.observe`（只读）→ `.transform`（反转、步长）→ `.smooth`（吞掉原事件，交给插值器）。顺序由阶段决定，不依赖注册先后。
 - 实时代码集中放在功能目录的 `Realtime/` 子目录里，便于审查；`check-architecture.sh` 校验其中没有 `@MainActor`、`DispatchQueue.main`、`NSApp` 等。
+- **按键过滤器**（ADR-0017）：`RealtimeKeyFilter` 在键盘 tap 线程上同步调用，只收到 keyDown，返回放行 / 吞掉 / 改发另一个组合键；
+  位置在键盘会话、录制之后，快捷键匹配之前。用 `context.input.registerKeyFilter` 注册（Finder 增强用它做 Windows 式改键）。
 - 平滑滚动需要按屏幕刷新率持续输出插值后的事件：功能可以自己持有一个 display link 线程（macOS 14+ 用 `NSScreen.displayLink`），但发事件必须走 `context.input.post(...)`。
 
 ### 5.5 滚动功能（FeatureScroll）的设计要点

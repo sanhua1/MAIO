@@ -133,3 +133,73 @@ struct RemoteControlSourceTests {
         #expect(!cache.isRemote(getpid()))
     }
 }
+
+/// 按键过滤器（ADR-0017）：只在前台是指定 App 时把 a 改成 b、吞掉 c
+private struct SampleKeyFilter: RealtimeKeyFilter {
+    func process(_ event: KeyEvent, _ environment: RealtimeEnvironment) -> KeyFilterDecision {
+        guard environment.frontmostBundleID == "com.apple.finder" else { return .pass }
+        switch event.keyCode {
+        case KeyChord(string: "a")?.keyCode: return .replace(KeyChord(string: "cmd+b")!)
+        case KeyChord(string: "c")?.keyCode: return .consume
+        default: return .pass
+        }
+    }
+}
+
+struct KeyFilterRoutingTests {
+    private func key(_ chord: String, _ kind: KeyEvent.Kind = .down) -> KeyEvent {
+        let parsed = KeyChord(string: chord)!
+        return KeyEvent(kind: kind, keyCode: parsed.keyCode, modifiers: parsed.modifiers)
+    }
+
+    private func router(frontmost: String?) -> KeyboardRouter {
+        var router = KeyboardRouter()
+        router.frontmost = frontmost
+        router.filters = [KeyFilterEntry(token: FilterToken(rawValue: 1), filter: SampleKeyFilter())]
+        return router
+    }
+
+    @Test func `replace posts chord and swallows key up`() throws {
+        var router = router(frontmost: "com.apple.finder")
+        #expect(try router.route(key("a")) == .init(consume: true, effect: .post(#require(KeyChord(string: "cmd+b")))))
+        #expect(router.route(key("a", .up)) == .swallow)
+        #expect(router.route(key("c")) == .swallow)
+        #expect(router.route(key("c", .up)) == .swallow)
+        #expect(router.route(key("d")) == .pass)
+    }
+
+    @Test func `filters see frontmost app`() {
+        var router = router(frontmost: "com.apple.Safari")
+        #expect(router.route(key("a")) == .pass)
+    }
+
+    @Test func `filters run before bindings but not during sessions`() throws {
+        var router = router(frontmost: "com.apple.finder")
+        let binding = try CommandBinding(id: "b", trigger: .hotkey(#require(KeyChord(string: "a"))), command: "system.openApp")
+        router.table = HotkeyTable(bindings: [binding]) { _ in true }
+        #expect(try router.route(key("a")) == .init(consume: true, effect: .post(#require(KeyChord(string: "cmd+b")))))
+        router.hasSession = true
+        #expect(router.route(key("a")) == .init(consume: true, effect: .toSession(key("a"))))
+    }
+}
+
+private final class FlagsRecorder: RealtimeKeyFilter, @unchecked Sendable {
+    var seen: [KeyEvent.Kind] = []
+    func process(_ event: KeyEvent, _: RealtimeEnvironment) -> KeyFilterDecision {
+        seen.append(event.kind)
+        return .consume
+    }
+}
+
+struct KeyFilterFlagsTests {
+    @Test func `filters observe modifier changes but cannot swallow them`() {
+        let recorder = FlagsRecorder()
+        var router = KeyboardRouter()
+        router.filters = [KeyFilterEntry(token: FilterToken(rawValue: 1), filter: recorder)]
+        let flags = KeyEvent(kind: .flagsChanged, keyCode: 55, modifiers: .command)
+        #expect(router.route(flags) == .pass)
+        router.isRecording = true
+        #expect(router.route(flags) == .pass)
+        #expect(recorder.seen == [.flagsChanged])
+    }
+}

@@ -80,8 +80,18 @@ public final class FakeInputService: InputService {
         return token
     }
 
+    public private(set) var keyFilters: [FilterToken: any RealtimeKeyFilter] = [:]
+
+    public func registerKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken {
+        let token = FilterToken(rawValue: nextToken)
+        nextToken += 1
+        keyFilters[token] = filter
+        return token
+    }
+
     public func removeFilter(_ token: FilterToken) {
         filters[token] = nil
+        keyFilters[token] = nil
     }
 }
 
@@ -168,6 +178,7 @@ public final class FakeFeatureContext: FeatureContext {
     public let fakePermissions = FakePermissions()
     public let fakeOverlay = RecordingOverlay()
     public let fakeEvents = FakeSystemEvents()
+    public let fakeShortcuts = FakeShortcutDirectory()
     public let logger = Logger(subsystem: "app.maio.tests", category: "fake")
 
     public init(featureID: FeatureID) {
@@ -176,6 +187,10 @@ public final class FakeFeatureContext: FeatureContext {
 
     public var commands: any CommandRegistrar {
         fakeCommands
+    }
+
+    public var shortcuts: any ShortcutDirectory {
+        fakeShortcuts
     }
 
     public var input: any InputService {
@@ -219,5 +234,22 @@ public final class InMemorySecrets: SecretService {
 
     public func setSecret(_ value: String?, for key: String) throws {
         values[key] = value.flatMap { $0.isEmpty ? nil : $0 }
+    }
+}
+
+/// 快捷键目录的假实现：`occupied` 里预置占用，`reserved` 记录功能登记的键
+@MainActor
+public final class FakeShortcutDirectory: ShortcutDirectory {
+    public var occupied: [KeyChord: [ShortcutOccupant]] = [:]
+    public private(set) var reserved: [ReservedShortcut] = []
+
+    public init() {}
+
+    public func occupants(of chord: KeyChord, scope _: BindingScope) -> [ShortcutOccupant] {
+        occupied[chord] ?? []
+    }
+
+    public func reserve(_ shortcuts: [ReservedShortcut]) {
+        reserved = shortcuts
     }
 }

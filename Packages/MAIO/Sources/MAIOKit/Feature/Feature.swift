@@ -68,5 +68,7 @@ public protocol FeatureContext: AnyObject {
     var permissions: any PermissionService { get }
     var overlay: any OverlayService { get }
     var events: any SystemEventService { get }
+    /// 快捷键占用查询与登记（ADR-0018）
+    var shortcuts: any ShortcutDirectory { get }
     var logger: Logger { get }
 }

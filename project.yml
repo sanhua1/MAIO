@@ -8,6 +8,11 @@ options:
 packages:
   MAIO:
     path: Packages/MAIO
+# 版本号：主程序和 Finder 扩展共用（扩展版本必须和主程序一致）
+settings:
+  base:
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "5"
 configFiles:
   Debug: Config/Base.xcconfig
   Release: Config/Base.xcconfig
@@ -25,12 +30,12 @@ targets:
     dependencies:
       - package: MAIO
         product: MAIOApp
+      # Finder 右键菜单扩展，打包到 Contents/PlugIns
+      - target: MAIOFinderSync
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.maio.MAIO
         PRODUCT_NAME: MAIO
-        MARKETING_VERSION: "0.1.3"
-        CURRENT_PROJECT_VERSION: "4"
         SWIFT_VERSION: "6.0"
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         ENABLE_HARDENED_RUNTIME: YES
@@ -42,3 +47,20 @@ targets:
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
         INFOPLIST_FILE: App/Info.plist
+  # Finder 右键菜单（Finder Sync 扩展，必须开沙盒）。只负责显示菜单，动作交给主程序（maio:// URL）
+  MAIOFinderSync:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: FinderSync
+        excludes: ["*.entitlements", "Info.plist"]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.maio.MAIO.FinderSync
+        PRODUCT_NAME: MAIOFinderSync
+        SWIFT_VERSION: "6.0"
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: FinderSync/FinderSync.entitlements
+        INFOPLIST_FILE: FinderSync/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
