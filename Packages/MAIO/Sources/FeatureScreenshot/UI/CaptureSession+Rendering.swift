@@ -112,6 +112,9 @@ extension CaptureSession {
               let view = panels.first(where: { $0.overlayView.display.bounds == interaction.bounds })?.overlayView
         else {
             toolbar.isHidden = true
+            if toolbarModel.hint != nil {
+                clearToolbarHover()
+            }
             return
         }
         if toolbar.superview !== view {

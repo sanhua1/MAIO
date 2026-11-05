@@ -1,54 +1,6 @@
 import AppKit
+import MAIOUI
 import SwiftUI
-
-/// 工具栏发出的操作
-enum ToolbarCommand {
-    case tool(AnnotationTool)
-    case color(AnnotationColor)
-    /// 打开系统颜色面板
-    case customColor
-    /// 文字工具：色板改文字颜色还是背景色
-    case textColorTarget(TextColorTarget)
-    case textBold
-    case textDecoration(TextDecoration)
-    /// 大小（pt，连续可调）
-    case size(Double)
-    case options((inout ToolStyle) -> Void)
-    case undo
-    case redo
-    case cancel
-    case save
-    case pin
-    case ocr
-    case translate
-    case scrolling
-    case copy
-}
-
-/// 工具栏的状态，由截图流程同步。
-@MainActor @Observable
-final class ToolbarModel {
-    var tool: AnnotationTool?
-    /// 选项行对应的工具（选中的对象优先）
-    var activeTool: AnnotationTool?
-    var style = ToolStyle()
-    var canUndo = false
-    var canRedo = false
-    var nextCounter = 1
-    /// 色板上高亮的颜色（文字工具时是文字颜色或背景色）
-    var paletteColor = AnnotationColor.red
-    /// 当前大小（线宽、字号……）和范围
-    var sizeValue = 4.0
-    var sizeRange: ClosedRange<Double> = 1 ... 40
-    /// 当前这段文字的样式（正在输入 > 选中 > 默认）
-    var text = TextAppearance(foreground: .red, background: .white, decoration: .plain, bold: false, fontSize: 18)
-    var textColorTarget = TextColorTarget.foreground
-    /// ✓ 的说明（⏎ 做什么取决于从哪个命令开始的截图）
-    var confirmHelp = "复制（⏎）"
-    /// 重新编辑已有截图时不能长截图
-    var canScroll = true
-    @ObservationIgnored var perform: (ToolbarCommand) -> Void = { _ in }
-}
 
 /// 选区确定后出现的工具栏（spec 4.1）：
 /// 第一行是工具和操作；第二行是颜色和大小；当前工具有专属选项时才出现第三行。
@@ -100,6 +52,8 @@ struct CaptureToolbar: View {
         .fixedSize()
         // 宿主视图的高度和内容不一致的那一瞬间，内容贴着顶部，不居中跳动
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 整块工具栏（包括按钮之间的空隙）
+        .onHover { model.setOverToolbar($0) }
     }
 
     private var divider: some View {
@@ -117,11 +71,22 @@ struct CaptureToolbar: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .help(help)
+        .toolbarHint(help, model: model)
     }
 }
 
-/// 第二行：8 个预设色 + 自定义色、四档大小、工具选项。
+/// 工具栏控件的悬停提示。截图的遮罩是自绘窗口，系统自带的 `.help` 提示不会出现，
+/// 这里由 `ToolbarModel` 统一记录，截图流程按它设置指针形状并显示提示条。
+extension View {
+    func toolbarHint(_ help: String, cursor: ToolbarCursor = .arrow, model: ToolbarModel) -> some View {
+        onHover { inside in
+            model.setHover(ToolbarHint(help: help, cursor: cursor), inside: inside)
+        }
+        .accessibilityLabel(help)
+    }
+}
+
+/// 第二行：8 个预设色 + 自定义色、大小。
 /// 每一块都是固定宽度，切换工具时工具栏大小和按钮位置不变。
 private struct ToolOptionsRow: View {
     static let cell: CGFloat = 22
@@ -141,7 +106,7 @@ private struct ToolOptionsRow: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .help("自定义颜色")
+            .toolbarHint("自定义颜色", model: model)
             divider
             SizeControl(model: model)
         }
@@ -167,6 +132,22 @@ private struct ToolOptionsRow: View {
                 .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .toolbarHint(Self.name(of: color), model: model)
+    }
+
+    /// 预设色的名字（提示用）
+    static func name(of color: AnnotationColor) -> String {
+        switch color {
+        case AnnotationColor.red: "红色"
+        case AnnotationColor.orange: "橙色"
+        case AnnotationColor.yellow: "黄色"
+        case AnnotationColor.green: "绿色"
+        case AnnotationColor.blue: "蓝色"
+        case AnnotationColor.purple: "紫色"
+        case AnnotationColor.black: "黑色"
+        case AnnotationColor.white: "白色"
+        default: "颜色"
+        }
     }
 }
 
@@ -182,6 +163,7 @@ private struct SizeControl: View {
             Slider(value: value, in: model.sizeRange, step: 1)
                 .controlSize(.mini)
                 .frame(width: 74)
+                .toolbarHint(Self.help, model: model)
             TextField("", text: $text)
                 .textFieldStyle(.roundedBorder)
                 .controlSize(.small)
@@ -195,8 +177,8 @@ private struct SizeControl: View {
                         commit()
                     }
                 }
+                .toolbarHint(Self.help, cursor: .iBeam, model: model)
         }
-        .help("大小（线宽、字号等），可以拖动、输入数字或用滚轮调整")
         .onAppear { text = Self.format(model.sizeValue) }
         .onChange(of: model.sizeValue) { _, newValue in
             if !editing {
@@ -204,6 +186,8 @@ private struct SizeControl: View {
             }
         }
     }
+
+    static let help = "大小（线宽、字号等），可以拖动、输入数字或用滚轮调整"
 
     private var value: SwiftUI.Binding<Double> {
         SwiftUI.Binding(get: { model.sizeValue }, set: { model.perform(.size($0)) })
@@ -236,7 +220,7 @@ private struct TextOptions: View {
                     )
             }
             .buttonStyle(.plain)
-            .help("粗体")
+            .toolbarHint("粗体", model: model)
             segmented
             if model.text.decoration != .plain {
                 // 色板改哪种颜色：点哪个，哪个高亮
@@ -260,7 +244,7 @@ private struct TextOptions: View {
                         .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
-                .help("文字外观：\(decoration.title)")
+                .toolbarHint("文字外观：\(decoration.title)", model: model)
             }
         }
         .background(Color.secondary.opacity(0.12))
@@ -286,7 +270,7 @@ private struct TextOptions: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .help("色板修改\(title)颜色")
+        .toolbarHint("色板修改\(title)颜色", model: model)
     }
 }
 
@@ -298,12 +282,12 @@ private struct ToolSpecificOptions: View {
         HStack(spacing: 4) {
             switch model.activeTool {
             case .rectangle:
-                chip("实心", model.style.filled) { $0.filled.toggle() }
-                chip("圆角", model.style.rounded) { $0.rounded.toggle() }
+                chip("实心", help: "实心填充", model.style.filled) { $0.filled.toggle() }
+                chip("圆角", help: "圆角矩形", model.style.rounded) { $0.rounded.toggle() }
             case .ellipse:
-                chip("实心", model.style.filled) { $0.filled.toggle() }
+                chip("实心", help: "实心填充", model.style.filled) { $0.filled.toggle() }
             case .line:
-                chip("虚线", model.style.dashed) { $0.dashed.toggle() }
+                chip("虚线", help: "画虚线", model.style.dashed) { $0.dashed.toggle() }
             case .text:
                 TextOptions(model: model)
             case .counter:
@@ -316,7 +300,9 @@ private struct ToolSpecificOptions: View {
         .lineLimit(1)
     }
 
-    private func chip(_ title: String, _ isOn: Bool, change: @escaping (inout ToolStyle) -> Void) -> some View {
+    private func chip(
+        _ title: String, help: String, _ isOn: Bool, change: @escaping (inout ToolStyle) -> Void,
+    ) -> some View {
         Button { model.perform(.options(change)) } label: {
             Text(title)
                 .fixedSize()
@@ -325,6 +311,7 @@ private struct ToolSpecificOptions: View {
                 .background(isOn ? Color.accentColor.opacity(0.35) : Color.secondary.opacity(0.12), in: .capsule)
         }
         .buttonStyle(.plain)
+        .toolbarHint(help, model: model)
     }
 }
 

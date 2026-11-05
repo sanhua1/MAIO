@@ -110,6 +110,9 @@ final class CaptureSession: OverlayEventHandler {
     var pendingElement: ElementRequest?
     var elementTask: Task<Void, Never>?
     private(set) lazy var toolbar = NSHostingView(rootView: CaptureToolbar(model: toolbarModel))
+    /// 鼠标当前停在工具栏的哪一块上（决定指针形状和提示）
+    var toolbarHint: ToolbarHint?
+    let toolbarTooltip = ToolbarTooltip()
 
     init(
         frozen: [FrozenDisplay], panels: [OverlayPanel], windows: [WindowInfo], locator: ElementLocator,
@@ -129,6 +132,7 @@ final class CaptureSession: OverlayEventHandler {
             editor.document.load(edit.annotations)
         }
         toolbarModel.perform = { [weak self] command in self?.perform(command) }
+        toolbarModel.hintChanged = { [weak self] hint in self?.toolbarHoverChanged(hint) }
         toolbarModel.canScroll = edit == nil
         toolbarModel.confirmHelp = switch options.primaryAction {
         case .ocr: "识别文字（⏎）"
@@ -172,6 +176,8 @@ final class CaptureSession: OverlayEventHandler {
         finished = true
         elementTask?.cancel()
         _ = textField.finish()
+        toolbarModel.clearHover()
+        toolbarTooltip.hide()
         toolbar.removeFromSuperview()
         colorPanel.close()
         for panel in panels {

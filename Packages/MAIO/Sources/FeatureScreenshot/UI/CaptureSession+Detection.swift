@@ -67,6 +67,11 @@ extension CaptureSession {
     }
 
     func updateCursorShape() {
+        // 工具栏上还原成普通指针（文字框里是 I 形），不再显示十字
+        if isOverToolbar(cursor) {
+            (toolbarHint?.cursor ?? .arrow).nsCursor.set()
+            return
+        }
         guard let selection = interaction.selection else {
             NSCursor.crosshair.set()
             return

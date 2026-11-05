@@ -98,6 +98,10 @@ extension CaptureSession {
 
     func overlayMouseMoved(to point: CGPoint) {
         cursor = point
+        // 鼠标已经离开工具栏时兜底清掉提示（悬停回调有时会晚到）
+        if !isOverToolbar(point) {
+            clearToolbarHover()
+        }
         updateColor()
         updateHover()
         updateCursorShape()
