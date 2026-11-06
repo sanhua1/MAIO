@@ -20,6 +20,7 @@ public final class InputEngine {
     @ObservationIgnored let poster = EventPoster()
     @ObservationIgnored private let keyboard: KeyboardTap
     @ObservationIgnored private let pointer = PointerTap()
+    @ObservationIgnored private lazy var buttons = ButtonTap(poster: poster)
     @ObservationIgnored private var permissionPoll: Task<Void, Never>?
     @ObservationIgnored private var nextFilterToken: UInt64 = 1
     @ObservationIgnored private let logger = Logger(subsystem: "app.maio", category: "input")
@@ -49,6 +50,7 @@ public final class InputEngine {
         permissionPoll = nil
         keyboard.stop()
         pointer.stop()
+        buttons.stop()
         isPointerTapRunning = false
         status = .stopped
     }
@@ -60,6 +62,7 @@ public final class InputEngine {
     func updateFrontmost(_ bundleID: String?) {
         keyboard.update(frontmost: bundleID)
         pointer.update(frontmost: bundleID)
+        buttons.update(frontmost: bundleID)
     }
 
     /// 开始录制快捷键：录制期间所有按键都交给 handler，不会触发任何绑定。
@@ -92,15 +95,25 @@ public final class InputEngine {
         return token
     }
 
+    func addButtonFilter(_ filter: any RealtimeButtonFilter) -> FilterToken {
+        let token = FilterToken(rawValue: nextFilterToken)
+        nextFilterToken += 1
+        buttons.add(token: token, filter: filter)
+        refreshPointerTap()
+        return token
+    }
+
     func removeFilter(_ token: FilterToken) {
         pointer.remove(token)
         keyboard.removeFilter(token)
+        buttons.remove(token)
         refreshPointerTap()
     }
 
-    /// 只有存在过滤器时才运行指针 tap。
+    /// 只有存在过滤器时才运行指针 tap、鼠标按钮 tap。
     private func refreshPointerTap() {
         guard status == .running else { return }
+        buttons.refresh()
         if pointer.hasFilters, !pointer.isRunning {
             isPointerTapRunning = pointer.start()
         } else if !pointer.hasFilters, pointer.isRunning {

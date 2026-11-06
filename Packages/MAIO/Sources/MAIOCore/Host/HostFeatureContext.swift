@@ -77,6 +77,12 @@ final class ScopedInputService: InputService {
         return token
     }
 
+    func registerButtonFilter(_ filter: any RealtimeButtonFilter) -> FilterToken {
+        let token = engine.addButtonFilter(filter)
+        tokens.insert(token)
+        return token
+    }
+
     func removeFilter(_ token: FilterToken) {
         guard tokens.remove(token) != nil else { return }
         engine.removeFilter(token)

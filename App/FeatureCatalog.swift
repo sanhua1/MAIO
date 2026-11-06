@@ -1,5 +1,6 @@
 import FeatureClipboard
 import FeatureFinder
+import FeatureKeys
 import FeatureLauncher
 import FeatureScreenshot
 import FeatureScroll
@@ -23,6 +24,7 @@ enum FeatureCatalog {
         ScreenshotFeature.self,
         FinderFeature.self,
         LauncherFeature.self,
+        KeysFeature.self,
         // @new-feature-catalog
     ]
 }

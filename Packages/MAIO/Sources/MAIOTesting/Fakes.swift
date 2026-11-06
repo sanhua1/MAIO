@@ -91,6 +91,7 @@ public final class FakeInputService: InputService {
     }
 
     public private(set) var keyFilters: [FilterToken: any RealtimeKeyFilter] = [:]
+    public private(set) var buttonFilters: [FilterToken: any RealtimeButtonFilter] = [:]
 
     public func registerKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken {
         let token = FilterToken(rawValue: nextToken)
@@ -99,9 +100,17 @@ public final class FakeInputService: InputService {
         return token
     }
 
+    public func registerButtonFilter(_ filter: any RealtimeButtonFilter) -> FilterToken {
+        let token = FilterToken(rawValue: nextToken)
+        nextToken += 1
+        buttonFilters[token] = filter
+        return token
+    }
+
     public func removeFilter(_ token: FilterToken) {
         filters[token] = nil
         keyFilters[token] = nil
+        buttonFilters[token] = nil
     }
 }
 

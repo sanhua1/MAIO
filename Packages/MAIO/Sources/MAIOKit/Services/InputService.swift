@@ -36,6 +36,12 @@ public enum KeyFilterDecision: Sendable, Hashable {
     case replace(KeyChord)
 }
 
+/// 在 tap 线程上同步调用的鼠标按钮过滤器（ADR-0023）。只收到按下；按下被吞掉或改发时，引擎自己吞掉对应的抬起。
+/// 约束同 `RealtimeInputFilter`。
+public protocol RealtimeButtonFilter: Sendable {
+    func process(_ event: MouseButtonEvent, _ environment: RealtimeEnvironment) -> KeyFilterDecision
+}
+
 public struct FilterToken: Sendable, Hashable {
     public let rawValue: UInt64
     public init(rawValue: UInt64) {
@@ -61,7 +67,9 @@ public protocol InputService: AnyObject {
     func registerFilter(_ filter: any RealtimeInputFilter, for kind: PointerEventKind, stage: FilterStage) -> FilterToken
     /// 注册按键过滤器（ADR-0017）。按注册顺序执行，第一个不是 `pass` 的结果生效
     func registerKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken
-    /// 注销指针过滤器或按键过滤器
+    /// 注册鼠标按钮过滤器（ADR-0023）。按注册顺序执行，第一个不是 `pass` 的结果生效
+    func registerButtonFilter(_ filter: any RealtimeButtonFilter) -> FilterToken
+    /// 注销指针过滤器、按键过滤器或鼠标按钮过滤器
     func removeFilter(_ token: FilterToken)
     var poster: any SyntheticEventPoster { get }
 }

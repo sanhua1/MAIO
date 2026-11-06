@@ -51,6 +51,12 @@ MAIO 把日常离不开的几个小工具装进同一个 App：截图、翻译�
 - 搜 MAIO 自己的命令、系统操作（锁屏、睡眠、关机、清空废纸篓、切换深色模式）和系统设置的各个面板（蓝牙、显示器……）。
 - Tab 或 ← → 切换来源（全部 / 应用 / 文件 / 文件夹 / 命令）；`g`、`bd` + 空格直接网页搜索。
 
+### 按键管理（默认关闭，在设置里打开）
+- 给每个键盘单独改修饰键（⇪ ⌃ ⌥ ⌘ 🌐 互换，例如把 Mac 自带键盘改成 ⌘ ⌃ Fn ⌥）。直接写进系统设置「修饰键」，两边同步，退出 MAIO 也有效。
+- Caps 分层：Caps 本身的功能去掉，按住 Caps 时整个键盘换一层（默认 WASD 方向键、QE 翻页、XC 行首 / 行尾），层里每个键都能改成别的键、组合键或 MAIO 命令。
+- 全局改键：一个键换成另一个键（系统底层，包括 Fn 和 F13～F24）、组合键（例如 Home → 行首）或命令；鼠标中键、侧键换成组合键或命令。
+- 不需要装驱动。Karabiner-Elements 运行时会接管键盘，要先退出它。
+
 ### 鼠标滚动
 - 鼠标滚轮单独反转方向（触控板保持自然滚动）。
 - 平滑滚动，可调步长、速度、时长；按 App 设置例外。
@@ -125,7 +131,8 @@ make release  # 打包发布版：build/release/MAIO-<版本>.zip
 
 | 权限 | 用途 |
 |---|---|
-| 辅助功能 | 全局快捷键、滚动、窗口切换、读取选中文字和光标位置、粘贴 |
+| 辅助功能 | 全局快捷键、滚动、窗口切换、读取选中文字和光标位置、粘贴、按键管理的改键 |
+| 输入监控 | 按键管理：读取 Caps 键的按下 / 松开 |
 | 屏幕录制 | 截图、窗口缩略图 |
 | 自动化（Finder） | Finder 增强：新建文件、打开终端、取当前文件夹；启动器：清空废纸篓 |
 | 自动化（System Events） | 启动器：切换深色模式 |
@@ -140,6 +147,7 @@ MAIO 不联网上传任何数据。只有翻译功能会把要翻译的文字发
 - 窗口切换：`_AXUIElementGetWindow`（窗口 ID）、SkyLight 的窗口聚焦接口（切到其他桌面 / 全屏窗口）。
 - 滚轮缩放：触控板手势事件的私有字段。
 - 启动器的「锁定屏幕」：login.framework 的 `SACLockScreenImmediate`（和菜单栏「锁定屏幕」相同）。
+- 按键管理：`IOHIDEventSystemClientCreateWithType`（IOKit 导出但不在公开头文件里，系统设置的键盘面板也用它），用来改键盘的修饰键映射。
 
 ## 项目结构
 
@@ -169,6 +177,7 @@ docs/                   架构、决策记录（ADR）、功能规格
 - [flameshot](https://github.com/flameshot-org/flameshot)、[ShareX](https://github.com/ShareX/ShareX)、[Snow Shot](https://github.com/mg-chao/snow-apps)：截图与长截图
 - [LinearMouse](https://github.com/linearmouse/linearmouse)：滚轮缩放
 - [oil-find](https://github.com/oil-oil/oil-find)、[Cardinal](https://github.com/cardisoft/cardinal)：启动器的文件索引与搜索语法
+- [Karabiner-Elements](https://github.com/pqrs-org/Karabiner-Elements)：按键管理的功能划分（设备级 / 全局改键）
 
 GPL 项目只借鉴思路，没有复制代码；借鉴了具体做法的地方在代码注释里注明了出处。
 

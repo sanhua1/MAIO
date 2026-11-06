@@ -11,8 +11,8 @@ packages:
 # 版本号：主程序和 Finder 扩展共用（扩展版本必须和主程序一致）
 settings:
   base:
-    MARKETING_VERSION: "0.2.1"
-    CURRENT_PROJECT_VERSION: "6"
+    MARKETING_VERSION: "0.2.2"
+    CURRENT_PROJECT_VERSION: "7"
 configFiles:
   Debug: Config/Base.xcconfig
   Release: Config/Base.xcconfig

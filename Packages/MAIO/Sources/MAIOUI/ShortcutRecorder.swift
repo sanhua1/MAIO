@@ -1,16 +1,22 @@
 import MAIOKit
-import MAIOUI
 import SwiftUI
 
-/// 录制快捷键的按钮：点一下开始录，按下组合键即保存，Esc 取消。录制期间按键不会传给其他 App（键盘会话）。
-struct ShortcutRecorder: View {
+/// 录制快捷键的按钮（Finder 增强、按键管理共用）：点一下开始录，按下组合键即保存，Esc 取消。录制期间按键不会传给其他 App（键盘会话）。
+public struct ShortcutRecorder: View {
     let chord: KeyChord?
     let input: any InputService
     let onChange: (KeyChord) -> Void
     @State private var session: (any KeyboardSession)?
     @State private var held: KeyModifiers = []
+    private static let escape: UInt16 = 53
 
-    var body: some View {
+    public init(chord: KeyChord?, input: any InputService, onChange: @escaping (KeyChord) -> Void) {
+        self.chord = chord
+        self.input = input
+        self.onChange = onChange
+    }
+
+    public var body: some View {
         Button(action: toggle) {
             Text(label)
                 .frame(minWidth: 70)
@@ -44,7 +50,7 @@ struct ShortcutRecorder: View {
                 switch event.kind {
                 case .flagsChanged:
                     held = event.modifiers.subtracting(.function)
-                case .down where event.keyCode == FinderKeymap.Key.escape && event.modifiers.isEmpty:
+                case .down where event.keyCode == Self.escape && event.modifiers.isEmpty:
                     stop()
                 case .down where !KeyCodes.modifierKeys.contains(event.keyCode):
                     stop()
@@ -60,34 +66,5 @@ struct ShortcutRecorder: View {
         session?.end()
         session = nil
         held = []
-    }
-}
-
-/// 冲突提示列表（红色：不会生效；橙色：会覆盖别的；灰色：说明）
-struct WarningList: View {
-    let warnings: [ShortcutWarning]
-
-    var body: some View {
-        ForEach(warnings) { warning in
-            Label(warning.text, systemImage: symbol(warning.level))
-                .font(.caption)
-                .foregroundStyle(color(warning.level))
-        }
-    }
-
-    private func symbol(_ level: ShortcutWarning.Level) -> String {
-        switch level {
-        case .info: "info.circle"
-        case .warning: "exclamationmark.triangle"
-        case .error: "xmark.octagon"
-        }
-    }
-
-    private func color(_ level: ShortcutWarning.Level) -> Color {
-        switch level {
-        case .info: .secondary
-        case .warning: .orange
-        case .error: .red
-        }
     }
 }

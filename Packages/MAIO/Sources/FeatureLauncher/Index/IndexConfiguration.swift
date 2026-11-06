@@ -28,9 +28,45 @@ enum IndexConfiguration {
         ].map { home + "/" + $0 }
     }
 
-    /// 有没有完全磁盘访问权限：能列出 TCC 数据库所在目录就有
+    /// 只有完全磁盘访问才能读、读不到时系统**不弹授权窗口**的位置（桌面、文稿、下载会弹，不能拿来试）。
+    /// 没有公开接口能直接查这个权限，只能试读受保护的数据（Apple DTS 的建议）。
+    /// 以前只看 `~/Library/Application Support/com.apple.TCC`：macOS 27 上这个目录不存在了，永远判成没有权限。
+    static func fullDiskAccessProbes(home: String) -> [String] {
+        [
+            "Library/Safari", "Library/Mail", "Library/Messages", "Library/Cookies",
+            "Library/Application Support/com.apple.TCC",
+        ].map { home + "/" + $0 } + ["/Library/Application Support/com.apple.TCC"]
+    }
+
+    enum ProbeResult: Equatable {
+        case readable
+        case denied
+        /// 不存在等其他错误：说明不了什么
+        case unknown
+    }
+
+    /// 有一个位置能读就有权限；被拒绝就没有；都说明不了时按没有处理（不去碰会弹窗的位置）
+    static func hasFullDiskAccess(_ results: some Sequence<ProbeResult>) -> Bool {
+        for result in results {
+            switch result {
+            case .readable: return true
+            case .denied: return false
+            case .unknown: continue
+            }
+        }
+        return false
+    }
+
     static func hasFullDiskAccess(home: String = NSHomeDirectory()) -> Bool {
-        (try? FileManager.default.contentsOfDirectory(atPath: home + "/Library/Application Support/com.apple.TCC")) != nil
+        hasFullDiskAccess(fullDiskAccessProbes(home: home).lazy.map(probe))
+    }
+
+    private static func probe(_ path: String) -> ProbeResult {
+        guard let directory = opendir(path) else {
+            return errno == EPERM || errno == EACCES ? .denied : .unknown
+        }
+        closedir(directory)
+        return .readable
     }
 
     /// 系统卷和数据卷（`/Users` 等通过 firmlink 指向数据卷）

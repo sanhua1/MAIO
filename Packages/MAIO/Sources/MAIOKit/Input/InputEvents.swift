@@ -21,6 +21,18 @@ public struct KeyEvent: Sendable, Hashable {
     }
 }
 
+/// 鼠标按钮按下（ADR-0023）。只有中键、侧键等（按钮号 ≥ 2），不含左右键。
+public struct MouseButtonEvent: Sendable, Hashable {
+    /// 2 中键、3 后退、4 前进，更多按钮依次往后
+    public let button: Int
+    public let modifiers: KeyModifiers
+
+    public init(button: Int, modifiers: KeyModifiers) {
+        self.button = button
+        self.modifiers = modifiers
+    }
+}
+
 /// 指针设备类型（见 ADR-0006）。
 public enum PointerDeviceKind: Sendable, Hashable {
     /// 鼠标滚轮（包括 Logitech 平滑滚动驱动、远程桌面转发的连续滚轮事件，此时 `isContinuous` 为 true）

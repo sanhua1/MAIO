@@ -13,6 +13,7 @@ let features: [String] = [
     "Screenshot",
     "Finder",
     "Launcher",
+    "Keys",
     // @new-feature-marker
 ]
 

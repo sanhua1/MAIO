@@ -143,6 +143,7 @@ FSEvents（逐文件，0.15 秒）→ IndexUpdater：lstat → 删子树 / 补�
 ## 权限
 
 完全磁盘访问（可选）：没有时跳过桌面、文稿、下载等受保护位置，设置页提示。
+检测方法（`IndexConfiguration.hasFullDiskAccess`）：依次试读 `~/Library/Safari`、`Mail`、`Messages`、`Cookies`、TCC 目录，有一个能读就有权限、被拒绝（EPERM）就没有、不存在就看下一个。这些位置没权限时不弹窗；桌面 / 文稿 / 下载会弹，不能拿来试。0.2.1 只看 `~/Library/Application Support/com.apple.TCC`，macOS 27 上这个目录不存在，永远误报没有权限。
 
 ## 已知限制
 
