@@ -7,9 +7,10 @@ enum LauncherActions {
     /// 打开 / 执行（应用已经在运行就切到前台）。`perform` 执行 MAIO 命令
     static func open(_ item: LauncherItem, perform: (String) async throws -> Void) async throws {
         switch item.kind {
-        case let .app(path, _):
+        case let .app(path, bundleID):
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
+            configuration.createsNewApplicationInstance = needsNewInstance(path: path, bundleID: bundleID)
             _ = try await NSWorkspace.shared.openApplication(at: URL(filePath: path), configuration: configuration)
         case let .file(path, _):
             let configuration = NSWorkspace.OpenConfiguration()
@@ -41,6 +42,16 @@ enum LauncherActions {
     static func reveal(_ item: LauncherItem) {
         guard let path = item.path else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(filePath: path)])
+    }
+
+    /// 系统按 bundle ID 找已经在运行的实例：同一个 ID 有别的程序在跑（剪映的托盘小助手 `VideoFusion-macOSTrayHelper`
+    /// 和主程序都是 `com.lemon.lvpro`），就只把那个程序切到前台，主程序不启动，看起来点了没反应。
+    /// 这个路径本身没在运行、但同 ID 的别的路径在运行时，强制启动这个路径（Finder 双击也是这样）。
+    private static func needsNewInstance(path: String, bundleID: String?) -> Bool {
+        guard let bundleID else { return false }
+        let target = URL(filePath: path).standardizedFileURL
+        let sameID = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        return !sameID.isEmpty && !sameID.contains { $0.bundleURL?.standardizedFileURL == target }
     }
 
     /// 正在运行的应用对应的条目 ID（和 `LauncherItem.app` 的 ID 规则一致）
