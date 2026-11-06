@@ -78,6 +78,7 @@ final class LauncherViewModel {
 
     func prepareForOpen(keepQuery: Bool, running: Set<String>) {
         self.running = running
+        removeMissingApps()
         if !keepQuery {
             query = ""
             selectedSource = .all
@@ -176,6 +177,15 @@ final class LauncherViewModel {
         guard query.isEmpty, selectedSource != .all else { return false }
         selectedSource = .all
         return true
+    }
+
+    /// 应用列表最多一分钟重扫一次（打开面板时在后台扫，先用旧列表）。这期间删掉的应用先从列表里拿掉，
+    /// 免得搜到了点了没反应。几百个 stat，不到 1 ms。
+    func removeMissingApps() {
+        let kept = apps.filter { item in item.path.map { FileManager.default.fileExists(atPath: $0) } ?? true }
+        if kept.count != apps.count {
+            apps = kept
+        }
     }
 
     func record(_ item: LauncherItem) {

@@ -46,7 +46,7 @@ struct LauncherPanelView: View {
             hint("⌘⏎", "在 Finder 中显示")
             hint("⌘C", "复制路径")
             hint("⌘1–9", "快速打开")
-            hint("⇥ / ← →", "切换来源")
+            hint("⇥", "切换来源")
             Spacer()
             hint("Esc", "关闭")
         }
@@ -144,6 +144,7 @@ private struct LauncherResultList: View {
             model.select(index)
             model.openSelected(reveal: false)
         }
+        .modifier(FileDrag(item: item, icon: model.icons.icon(for: item)))
     }
 
     @ViewBuilder private var emptyState: some View {
@@ -155,6 +156,24 @@ private struct LauncherResultList: View {
                 .padding(40)
         } else {
             Text("没有找到").font(.callout).foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// 应用、文件可以直接拖出去（拖到程序坞、AppCleaner、访达、别的 App 里），和从访达拖一样是文件 URL
+private struct FileDrag: ViewModifier {
+    let item: LauncherItem
+    let icon: NSImage
+
+    func body(content: Content) -> some View {
+        if let path = item.path {
+            content.onDrag {
+                NSItemProvider(object: URL(filePath: path) as NSURL)
+            } preview: {
+                Image(nsImage: icon).resizable().frame(width: 48, height: 48)
+            }
+        } else {
+            content
         }
     }
 }

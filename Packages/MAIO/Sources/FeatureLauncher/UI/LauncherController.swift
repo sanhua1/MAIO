@@ -93,6 +93,13 @@ final class LauncherController {
         model.record(item)
         onRecord(model.usage)
         close(restoreFocus: item.isCommand)
+        // 应用、文件已经被删掉（索引还没来得及更新）：提示一下，从列表里拿掉，不再假装打开
+        if let path = item.path, !FileManager.default.fileExists(atPath: path) {
+            model.removeMissingApps()
+            previousApp?.activate()
+            showError("\(item.title) 已经不在了：\(path)")
+            return
+        }
         if reveal, item.path != nil {
             LauncherActions.reveal(item)
             return
@@ -109,11 +116,10 @@ final class LauncherController {
                 try await LauncherActions.open(item, perform: perform)
             } catch {
                 logger("打开失败：\(item.title)：\(error.localizedDescription)")
-                if item.isCommand {
-                    showError("\(item.title)：\(error.localizedDescription)")
-                } else {
+                if !item.isCommand {
                     fallback?.activate()
                 }
+                showError("\(item.title)：\(error.localizedDescription)")
             }
         }
     }
@@ -173,8 +179,6 @@ final class LauncherController {
         static let tab: UInt16 = 48
         static let up: UInt16 = 126
         static let down: UInt16 = 125
-        static let left: UInt16 = 123
-        static let right: UInt16 = 124
         static let p: UInt16 = 35
         static let n: UInt16 = 45
         static let c: UInt16 = 8
@@ -192,9 +196,9 @@ final class LauncherController {
         case (Key.returnKey, []), (Key.enter, []): model.openSelected(reveal: false)
         case (Key.returnKey, .command), (Key.enter, .command): model.openSelected(reveal: true)
         case (Key.escape, []): model.escape()
-        // ← → 切换来源；在输入里移动光标用 ⌥← / ⌘← 等（带修饰键的照常交给搜索框）
-        case (Key.tab, []), (Key.right, []): model.cycleSource(forward: true)
-        case (Key.tab, .shift), (Key.left, []): model.cycleSource(forward: false)
+        // ← → 留给搜索框移动光标，只用 Tab 切换来源
+        case (Key.tab, []): model.cycleSource(forward: true)
+        case (Key.tab, .shift): model.cycleSource(forward: false)
         case (KeyCodes.delete, []): return model.deleteOnEmpty()
         default:
             return commandShortcut(event, modifiers: modifiers)
