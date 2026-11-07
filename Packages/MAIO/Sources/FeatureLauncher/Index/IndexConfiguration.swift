@@ -6,11 +6,14 @@ enum IndexConfiguration {
     /// 系统目录、其他卷、临时文件、缓存（参考 Cardinal useIgnorePaths.ts 和 oil-find IndexConfig.swift）
     static func defaultExcludedPaths(home: String) -> [String] {
         [
-            "/System", "/Volumes", "/Network", "/dev", "/cores", "/private/var", "/private/tmp", "/Library/Caches",
+            "/System", "/Volumes", "/Network", "/dev", "/cores", "/private/var", tempFolder, "/Library/Caches",
             home + "/Library/Caches", home + "/Library/Logs", home + "/Library/CloudStorage", home + "/Library/Metadata",
             home + "/Library/Biome", home + "/.Trash",
         ]
     }
+
+    /// `/tmp` 的真实位置（设置里可以打开索引）
+    static let tempFolder = "/private/tmp"
 
     static let defaultExcludedNames: Set<String> = [
         ".Spotlight-V100", ".fseventsd", ".DocumentRevisions-V100", ".TemporaryItems", ".Trashes",
@@ -78,9 +81,13 @@ enum IndexConfiguration {
     }
 
     static func options(
-        extraExcluded: [String], indexPackageContents: Bool, fullDiskAccess: Bool, home: String = NSHomeDirectory(),
+        extraExcluded: [String], indexPackageContents: Bool, fullDiskAccess: Bool, indexTempFolder: Bool = false,
+        home: String = NSHomeDirectory(),
     ) -> ScanOptions {
         var excluded = Set(defaultExcludedPaths(home: home) + extraExcluded)
+        if indexTempFolder {
+            excluded.remove(tempFolder)
+        }
         if !fullDiskAccess {
             excluded.formUnion(protectedPaths(home: home))
         }

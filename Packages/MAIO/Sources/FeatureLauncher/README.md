@@ -137,6 +137,7 @@ FSEvents（逐文件，0.15 秒）→ IndexUpdater：lstat → 删子树 / 补�
 | `fileSearchEnabled` | `true` | 文件搜索 |
 | `excludedPaths` | `[]` | 额外不索引的目录 |
 | `indexPackageContents` | `false` | 索引 .app 等包的内部 |
+| `indexTempFolder` | `false` | 索引 `/tmp`（`/private/tmp`）。关闭时完全不扫、不监听变化 |
 | `showRecents` | `true` | 输入为空时显示最近使用 |
 | `showWebFallback` | `true` | "全部"最后一项是网页搜索 |
 | `defaultEngine` | `g` | 默认引擎的关键词 |

@@ -17,6 +17,8 @@ final class ToolbarTooltip {
         panel.contentView = view
         panel.setFrame(CGRect(origin: origin(for: size), size: size), display: true)
         panel.orderFrontRegardless()
+        // 每次文字不同、大小不同，阴影要按新内容重算
+        panel.invalidateShadow()
     }
 
     func hide() {
@@ -32,7 +34,7 @@ final class ToolbarTooltip {
         )
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = false
+        panel.hasShadow = true
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false

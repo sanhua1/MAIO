@@ -16,6 +16,8 @@ struct LauncherSettings: FeatureSettings {
     var excludedPaths: [String] = []
     /// 索引 .app 等包的内部（多 50% 左右的条目）
     var indexPackageContents = false
+    /// 索引 /tmp（`/private/tmp`）。默认不索引：程序随手写的临时文件，变动多，系统会定期清掉
+    var indexTempFolder = false
     /// 输入为空时显示最近使用
     var showRecents = true
     /// "全部"的最后一项是"用默认引擎搜索…"

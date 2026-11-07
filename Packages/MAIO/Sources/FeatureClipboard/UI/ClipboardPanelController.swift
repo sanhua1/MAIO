@@ -70,7 +70,7 @@ final class ClipboardPanelController {
         let panel = panel ?? makePanel()
         panel.setContentSize(ClipboardPanelView.size)
         panel.setFrameTopLeftPoint(origin)
-        AppActivation.activateForcibly()
+        // 不激活 MAIO（面板是 nonactivatingPanel，照样能接收按键），顶部菜单栏保持原来的 App
         panel.makeKeyAndOrderFront(nil)
         installKeyMonitor()
     }

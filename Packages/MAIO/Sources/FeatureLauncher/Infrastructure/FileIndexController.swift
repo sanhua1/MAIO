@@ -74,6 +74,7 @@ final class FileIndexController {
         status.fullDiskAccess = access
         return IndexConfiguration.options(
             extraExcluded: settings.excludedPaths, indexPackageContents: settings.indexPackageContents, fullDiskAccess: access,
+            indexTempFolder: settings.indexTempFolder,
         )
     }
 }

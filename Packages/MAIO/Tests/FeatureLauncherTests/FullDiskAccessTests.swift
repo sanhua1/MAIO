@@ -16,6 +16,23 @@ struct FullDiskAccessTests {
         #expect(IndexConfiguration.hasFullDiskAccess([Probe.unknown, .unknown, .unknown, .unknown, .unknown, .readable]))
     }
 
+    /// /tmp 默认不索引；打开开关后不再排除，索引指纹变了（会重扫）
+    @Test func `temp folder is excluded unless enabled`() {
+        let off = IndexConfiguration.options(
+            extraExcluded: [],
+            indexPackageContents: false,
+            fullDiskAccess: true,
+            home: "/Users/u",
+        )
+        let on = IndexConfiguration.options(
+            extraExcluded: [], indexPackageContents: false, fullDiskAccess: true, indexTempFolder: true, home: "/Users/u",
+        )
+        #expect(off.excludedPaths.contains("/private/tmp"))
+        #expect(!on.excludedPaths.contains("/private/tmp"))
+        #expect(on.excludedPaths.contains("/private/var"))
+        #expect(IndexConfiguration.fingerprint(off) != IndexConfiguration.fingerprint(on))
+    }
+
     @Test func `nothing conclusive counts as no access`() {
         #expect(!IndexConfiguration.hasFullDiskAccess([Probe.unknown, .unknown]))
         #expect(!IndexConfiguration.hasFullDiskAccess([Probe]()))

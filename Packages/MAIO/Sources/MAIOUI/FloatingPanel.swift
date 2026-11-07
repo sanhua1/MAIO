@@ -16,7 +16,8 @@ public final class FloatingPanel<Content: View>: NSPanel {
         level = .statusBar
         backgroundColor = .clear
         isOpaque = false
-        hasShadow = false
+        // 系统的窗口阴影（和别的 App 的浮动窗口一样）。透明窗口的阴影按内容的不透明部分算，圆角面板就是圆角阴影
+        hasShadow = true
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
@@ -48,6 +49,29 @@ public final class FloatingPanel<Content: View>: NSPanel {
             return true
         }
         return super.validateMenuItem(menuItem)
+    }
+
+    /// 透明窗口的阴影形状是按当时画出来的内容算好缓存的：显示和改变大小后等内容画完再重算一次，
+    /// 否则阴影会是空的或者停在旧的大小
+    override public func setFrame(_ frameRect: NSRect, display flag: Bool) {
+        super.setFrame(frameRect, display: flag)
+        refreshShadow()
+    }
+
+    override public func orderFrontRegardless() {
+        super.orderFrontRegardless()
+        refreshShadow()
+    }
+
+    override public func makeKeyAndOrderFront(_ sender: Any?) {
+        super.makeKeyAndOrderFront(sender)
+        refreshShadow()
+    }
+
+    private func refreshShadow() {
+        DispatchQueue.main.async { [weak self] in
+            self?.invalidateShadow()
+        }
     }
 
     public var hostingView: NSHostingView<Content>? {

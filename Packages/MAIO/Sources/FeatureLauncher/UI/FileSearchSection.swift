@@ -30,6 +30,7 @@ struct FileSearchSection: View {
                 }
                 Stepper("“全部”里最多显示 \(value.maxFilesInAll) 个文件", value: $value.maxFilesInAll, in: 5 ... 100, step: 5)
                 Toggle("索引 .app 等包的内部（条目会多一半左右）", isOn: $value.indexPackageContents)
+                Toggle("索引临时目录 /tmp（文件变动多，系统会定期清理）", isOn: $value.indexTempFolder)
                 ExcludedPathsEditor(paths: $value.excludedPaths)
                 Text("系统目录、其他磁盘、缓存和临时文件默认不索引。依赖目录（node_modules、.git……）、隐藏文件会索引，但排在后面。")
                     .font(.caption).foregroundStyle(.secondary)
