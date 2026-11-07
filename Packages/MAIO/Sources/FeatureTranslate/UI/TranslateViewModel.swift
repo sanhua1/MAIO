@@ -135,8 +135,8 @@ final class TranslateViewModel {
 
     private nonisolated func perform(_ provider: any TranslationProvider, id: String, request: TranslationRequest) async {
         do {
-            let result = try await provider.translate(request) { partial in
-                Task { @MainActor [weak self] in
+            let result = try await provider.translate(request) { [weak self] partial in
+                Task { @MainActor in
                     self?.update(id) { card in
                         if case .loading = card.phase {
                             card.phase = .streaming(partial)

@@ -8,7 +8,7 @@ MAIO 命令 / 系统操作 / 系统设置面板、网页搜索，Tab 切换来�
 ## 工作方式
 
 ```
-⌘空格 → launcher.show → LauncherController：记下当前 App → 强制激活 MAIO → 面板成为焦点（中文输入法可用）
+⌘空格 → launcher.show → LauncherController：记下当前 App → 面板直接成为键盘窗口（`nonactivatingPanel`，不激活 MAIO，顶部菜单栏保持原来的 App；中文输入法可用）
 输入 → LauncherQuery.parse（前缀 / 搜索引擎关键词）→ LauncherRanking（MatchScore + UsageBook）→ 分组结果
 ⏎ → 记一次常用度（data/launcher/usage.json）→ 关闭面板 → NSWorkspace 打开
 ```

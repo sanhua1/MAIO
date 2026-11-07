@@ -1,17 +1,16 @@
 import AppKit
 import SwiftUI
 
-/// 不抢焦点的浮动面板（HUD、剪贴板面板、切换器等共用）。
+/// 不抢焦点的浮动面板（HUD、剪贴板面板、切换器、启动器、翻译等共用）。
+/// 全部用 `nonactivatingPanel`：成为键盘窗口时不会把 MAIO 激活到前台，顶部菜单栏保持原来的 App
+/// （普通窗口一旦激活，macOS 会把菜单栏换成 MAIO 的「MAIO 编辑 窗口」）。需要打字的用 `acceptsKeyboard` 打开 `canBecomeKey`。
 @MainActor
 public final class FloatingPanel<Content: View>: NSPanel {
     private let acceptsKeyboard: Bool
 
     public init(rootView: Content, size: CGSize = CGSize(width: 320, height: 80), acceptsKeyboard: Bool = false) {
         self.acceptsKeyboard = acceptsKeyboard
-        var style: NSWindow.StyleMask = [.borderless, .fullSizeContentView]
-        if !acceptsKeyboard {
-            style.insert(.nonactivatingPanel)
-        }
+        let style: NSWindow.StyleMask = [.borderless, .fullSizeContentView, .nonactivatingPanel]
         super.init(contentRect: CGRect(origin: .zero, size: size), styleMask: style, backing: .buffered, defer: true)
         isFloatingPanel = true
         level = .statusBar

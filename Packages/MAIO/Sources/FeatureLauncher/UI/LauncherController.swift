@@ -63,7 +63,6 @@ final class LauncherController {
         let panel = panel ?? makePanel()
         panel.setContentSize(LauncherPanelView.size)
         panel.setFrameTopLeftPoint(Self.topLeft())
-        AppActivation.activateForcibly()
         panel.makeKeyAndOrderFront(nil)
         installKeyMonitor()
     }

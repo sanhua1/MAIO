@@ -55,7 +55,6 @@ final class TranslateWindowController {
         if !panel.isVisible {
             position(panel, placement: Self.placement(for: trigger, settings: current))
         }
-        AppActivation.activateForcibly()
         panel.makeKeyAndOrderFront(nil)
         if text != nil {
             model.translate()

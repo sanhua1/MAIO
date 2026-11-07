@@ -51,6 +51,20 @@ struct ZoomPlannerTests {
         #expect(ZoomPlanner.magnification(wheel(pixels: 10), elsewhere, config, reverseVertical: false) == 0.05)
     }
 
+    /// 快速拨滚轮时系统的加速把每格的像素量放大到几十上百，缩放仍然每格 5%，不会突然变快
+    @Test func `accelerated wheel still zooms one notch per event`() {
+        #expect(ZoomPlanner.magnification(wheel(pixels: 120), command, zoom, reverseVertical: false) == 0.05)
+        #expect(ZoomPlanner.magnification(wheel(pixels: -340), command, zoom, reverseVertical: false) == -0.05)
+    }
+
+    @Test func `continuous wheel zooms by pixels, at most one notch per event`() {
+        let small = PointerEvent(scrollY: 0, scrollX: 0, pixelY: 4, device: .wheel, isContinuous: true)
+        let value = ZoomPlanner.magnification(small, command, zoom, reverseVertical: false) ?? 0
+        #expect(abs(value - 0.02) < 1e-9)
+        let large = PointerEvent(scrollY: 0, scrollX: 0, pixelY: 80, device: .wheel, isContinuous: true)
+        #expect(ZoomPlanner.magnification(large, command, zoom, reverseVertical: false) == 0.05)
+    }
+
     @Test func `horizontal only scroll is not zoom`() {
         let horizontal = PointerEvent(scrollY: 0, scrollX: 2, pixelY: 0, pixelX: 20, device: .wheel)
         #expect(ZoomPlanner.magnification(horizontal, command, zoom, reverseVertical: false) == nil)

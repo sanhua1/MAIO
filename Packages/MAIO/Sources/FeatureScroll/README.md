@@ -25,7 +25,7 @@ App 例外按**鼠标所指的 App**判断（滚动事件的目标进程），�
 
 ## 滚轮缩放（ADR-0015）
 
-按住修饰键（默认 ⌘）拨滚轮 → `ZoomPlanner`（Domain/）算出缩放量（每像素 0.005 × 速度，按反转后的方向，往前拨放大）→ `PinchZoomer`（Realtime/）发出一次完整的捏合手势：第一格 began，之后按 120Hz 逐帧 changed（`ZoomEaser` 把每格分摊到后面几帧），松开修饰键或停下 0.5 秒后 ended。鼠标在 MAIO 自己的窗口上时不缩放（按滚动事件的目标 App 判断），贴图的 ⌘ + 滚轮仍然调透明度。事件由 `context.input.poster` 的 `.magnify` 发出，不带修饰键。
+按住修饰键（默认 ⌘）拨滚轮 → `ZoomPlanner`（Domain/）算出缩放量（普通滚轮每格固定 5% × 速度，不看事件里被系统滚轮加速放大过的像素量；连续滚动的滚轮按像素折算、每个事件最多一格；按反转后的方向，往前拨放大）→ `PinchZoomer`（Realtime/）发出一次完整的捏合手势：第一格 began，之后按 120Hz 逐帧 changed（`ZoomEaser` 把每格分摊到后面几帧），松开修饰键或停下 0.5 秒后 ended。鼠标在 MAIO 自己的窗口上时不缩放（按滚动事件的目标 App 判断），贴图的 ⌘ + 滚轮仍然调透明度。事件由 `context.input.poster` 的 `.magnify` 发出，不带修饰键。
 
 ## 命令
 
