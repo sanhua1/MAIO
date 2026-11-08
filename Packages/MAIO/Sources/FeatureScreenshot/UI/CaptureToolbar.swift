@@ -28,7 +28,9 @@ struct CaptureToolbar: View {
                     .disabled(!model.canRedo)
                 divider
                 iconButton("arrow.down.to.line.compact", help: "长截图（⌘L）：自己用滚轮往下滚，自动拼接") { model.perform(.scrolling) }
-                    .disabled(!model.canScroll)
+                    .disabled(!model.capturesScreen)
+                iconButton("record.circle", help: "录屏（⌘R）：录 MP4 或 GIF，MP4 可以录系统声音和麦克风") { model.perform(.record) }
+                    .disabled(!model.capturesScreen)
                 iconButton("text.viewfinder", help: "识别文字（⌘O）") { model.perform(.ocr) }
                 iconButton("translate", help: "截图翻译（⌘T）") { model.perform(.translate) }
                 divider

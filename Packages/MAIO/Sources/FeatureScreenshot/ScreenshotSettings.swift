@@ -38,4 +38,38 @@ struct ScreenshotSettings: FeatureSettings {
 
     /// 标注工具上次用过的颜色、大小、选项
     var toolStyle = ToolStyle()
+
+    // MARK: 录屏（ADR-0024）
+
+    /// 上次选的格式，开始录制前可以在控制条上改
+    var recordFormat = RecordingFormat.mp4
+    /// 录系统声音（只有 MP4）
+    var recordSystemAudio = false
+    /// 录麦克风（只有 MP4），和系统声音混成一条音轨
+    var recordMicrophone = false
+    var videoCodec = VideoCodec.h264
+    var videoFrameRate = 30
+    var gifFrameRate = 15
+    /// GIF 按 Retina 像素录（默认按 pt：文件小、编码快）
+    var gifHighResolution = false
+    var recordShowsCursor = true
+    /// 录屏保存文件夹，空表示默认的 ~/Movies/MAIO
+    var recordDirectory = ""
+
+    var recordingOptions: RecordingOptions {
+        RecordingOptions(
+            format: recordFormat, codec: videoCodec,
+            videoFrameRate: RecordingOptions.videoFrameRates.contains(videoFrameRate) ? videoFrameRate : 30,
+            gifFrameRate: RecordingOptions.gifFrameRates.contains(gifFrameRate) ? gifFrameRate : 15,
+            gifHighResolution: gifHighResolution, showsCursor: recordShowsCursor,
+            systemAudio: recordSystemAudio, microphone: recordMicrophone,
+        )
+    }
+
+    /// 控制条上改的格式和声音开关记下来，下次默认
+    mutating func remember(_ options: RecordingOptions) {
+        recordFormat = options.format
+        recordSystemAudio = options.systemAudio
+        recordMicrophone = options.microphone
+    }
 }

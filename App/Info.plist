@@ -14,6 +14,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MAIO 录屏时可以同时录下麦克风的声音（只在你打开「录麦克风」时使用）。</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>MAIO 需要通过 AppleScript 执行你绑定到快捷键的脚本，以及让 Finder 新建文件、获取当前文件夹（Finder 增强）。</string>
 </dict>

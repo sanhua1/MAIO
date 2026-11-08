@@ -26,9 +26,11 @@ struct ScreenshotIndex: Codable, Equatable, Sendable {
     var records: [ScreenshotRecord] = []
 }
 
-/// 保存截图时的文件名：`MAIO 2026-11-03 14.05.33.png`，重名时加序号。
+/// 保存截图时的文件名：`MAIO 2026-11-03 14.05.33.png`，重名时加序号。录屏用同样的名字，扩展名不同。
 enum ScreenshotFileName {
-    static func make(date: Date, timeZone: TimeZone = .current, existing: (String) -> Bool) -> String {
+    static func make(
+        date: Date, timeZone: TimeZone = .current, fileExtension: String = "png", existing: (String) -> Bool,
+    ) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
@@ -38,10 +40,10 @@ enum ScreenshotFileName {
         }
         let base = "MAIO \(parts.year ?? 0)-\(pad(parts.month))-\(pad(parts.day)) "
             + "\(pad(parts.hour)).\(pad(parts.minute)).\(pad(parts.second))"
-        var name = base + ".png"
+        var name = "\(base).\(fileExtension)"
         var index = 2
         while existing(name) {
-            name = "\(base) \(index).png"
+            name = "\(base) \(index).\(fileExtension)"
             index += 1
         }
         return name

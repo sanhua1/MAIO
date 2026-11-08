@@ -22,6 +22,7 @@ enum ToolbarCommand {
     case ocr
     case translate
     case scrolling
+    case record
     case copy
 }
 
@@ -64,8 +65,8 @@ final class ToolbarModel {
     var textColorTarget = TextColorTarget.foreground
     /// ✓ 的说明（⏎ 做什么取决于从哪个命令开始的截图）
     var confirmHelp = "复制（⏎）"
-    /// 重新编辑已有截图时不能长截图
-    var canScroll = true
+    /// 选区是屏幕（不是重新编辑已有截图）：只有这时能长截图、录屏
+    var capturesScreen = true
     @ObservationIgnored var perform: (ToolbarCommand) -> Void = { _ in }
     /// 提示变化（nil = 鼠标离开了所有控件或离开工具栏）
     @ObservationIgnored var hintChanged: (ToolbarHint?) -> Void = { _ in }

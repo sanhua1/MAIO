@@ -82,11 +82,8 @@ final class ScrollCaptureFrame {
 
     /// rect：全局坐标（左上角原点，pt）
     init(rect: CGRect, model: ScrollCaptureModel) {
-        let frame = Self.appKitRect(rect)
-        border = Self.panel(frame: frame.insetBy(dx: -2, dy: -2))
-        border.ignoresMouseEvents = true
-        border.contentView = BorderView(frame: CGRect(origin: .zero, size: border.frame.size))
-        sidebar = Self.panel(frame: Self.sidebarFrame(beside: frame))
+        border = FloatingPanels.border(around: rect)
+        sidebar = FloatingPanels.make(frame: Self.sidebarFrame(beside: FloatingPanels.appKitRect(rect)))
         sidebar.contentView = NSHostingView(rootView: ScrollCaptureSidebar(model: model))
     }
 
@@ -100,21 +97,9 @@ final class ScrollCaptureFrame {
         sidebar.close()
     }
 
-    private static func panel(frame: CGRect) -> NSPanel {
-        let panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.backgroundColor = .clear
-        panel.isOpaque = false
-        panel.hasShadow = false
-        panel.level = .statusBar
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        return panel
-    }
-
     /// 选区右边，顶部对齐，一直延伸到屏幕底部；右边放不下放左边，都放不下就放在选区里靠右
     private static func sidebarFrame(beside frame: CGRect) -> CGRect {
-        let visible = (NSScreen.screens.first { $0.frame.intersects(frame) } ?? NSScreen.main)?.visibleFrame ?? frame
+        let visible = FloatingPanels.visibleFrame(containing: frame)
         let width = ScrollCaptureSidebar.width
         let gap: CGFloat = 10
         let x: CGFloat = if frame.maxX + gap + width <= visible.maxX {
@@ -127,20 +112,5 @@ final class ScrollCaptureFrame {
         let top = min(frame.maxY, visible.maxY)
         let bottom = visible.minY + gap
         return CGRect(x: x, y: bottom, width: width, height: max(160, top - bottom))
-    }
-
-    private static func appKitRect(_ rect: CGRect) -> CGRect {
-        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
-        return CGRect(x: rect.minX, y: primaryHeight - rect.maxY, width: rect.width, height: rect.height)
-    }
-
-    private final class BorderView: NSView {
-        override func draw(_: NSRect) {
-            NSColor.controlAccentColor.setStroke()
-            let path = NSBezierPath(rect: bounds.insetBy(dx: 0.5, dy: 0.5))
-            path.lineWidth = 1
-            path.setLineDash([6, 4], count: 2, phase: 0)
-            path.stroke()
-        }
     }
 }

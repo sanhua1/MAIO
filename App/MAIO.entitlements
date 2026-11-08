@@ -8,5 +8,8 @@
 	<!-- 运行 AppleScript 控制其他 App -->
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
+	<!-- 录屏时录麦克风（开启 Hardened Runtime 后必须声明，否则系统直接拒绝） -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 </dict>
 </plist>

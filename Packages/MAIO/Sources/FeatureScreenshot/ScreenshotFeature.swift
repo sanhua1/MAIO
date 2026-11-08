@@ -20,6 +20,11 @@ public final class ScreenshotFeature: Feature {
                 command: ScreenshotCommands.capture,
             ),
             DefaultBinding(
+                id: "screenshot.default.record",
+                trigger: .hotkey(KeyChord(keyCode: KeyCodes.code(named: "f3") ?? 99, modifiers: .option)),
+                command: ScreenshotCommands.record,
+            ),
+            DefaultBinding(
                 id: "screenshot.default.pinClipboard",
                 trigger: .hotkey(KeyChord(keyCode: KeyCodes.code(named: "f2") ?? 120, modifiers: .option)),
                 command: ScreenshotCommands.pinClipboard,

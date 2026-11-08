@@ -9,6 +9,7 @@ struct ScreenshotCommands {
     static let ocr: CommandID = "screenshot.ocr"
     static let translate: CommandID = "screenshot.translate"
     static let scrolling: CommandID = "screenshot.scrolling"
+    static let record: CommandID = "screenshot.record"
     static let pinClipboard: CommandID = "screenshot.pinClipboard"
     static let pinLast: CommandID = "screenshot.pinLast"
     static let history: CommandID = "screenshot.history"
@@ -28,6 +29,10 @@ struct ScreenshotCommands {
         CommandDescriptor(
             id: scrolling, title: "长截图",
             summary: "框选区域后按 ⏎ 开始：自己用滚轮往下滚，自动拼接，右侧显示长条预览；Esc / ⏎ / 完成按钮结束，然后进入标注",
+        ),
+        CommandDescriptor(
+            id: record, title: "录屏",
+            summary: "框选区域后按 ⏎，在控制条上选 MP4 或 GIF（MP4 可以录系统声音和麦克风）再开始。录制中再按一次结束并保存，文件同时复制到剪贴板。默认 ⌥F3",
         ),
         CommandDescriptor(id: window, title: "窗口截图", summary: "截取最前面的窗口（保留圆角，不带阴影），直接复制并写入截图历史"),
         CommandDescriptor(
@@ -49,6 +54,7 @@ struct ScreenshotCommands {
             Self.ocr: { await controller.capture(primaryAction: .ocr) },
             Self.translate: { await controller.capture(primaryAction: .translate) },
             Self.scrolling: { await controller.capture(primaryAction: .scrolling) },
+            Self.record: { await controller.toggleRecording() },
             Self.fullScreen: { await controller.captureFullScreen() },
             Self.window: { await controller.captureFrontWindow() },
             Self.pinClipboard: { await controller.pinClipboard() },

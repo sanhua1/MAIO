@@ -27,6 +27,8 @@ final class ScreenshotController {
     let ocrWindows = OCRResultWindows()
     /// 正在进行的长截图
     var scrollCapture: ScrollCaptureSession?
+    /// 正在进行的录屏（包括开始前选格式的阶段）
+    var recording: RecordingSession?
 
     init(context: any FeatureContext, history: ScreenshotHistoryStore?) {
         self.context = context
@@ -56,6 +58,7 @@ final class ScreenshotController {
         ocrWindows.closeAll()
         scrollCapture?.cancel()
         scrollCapture = nil
+        endRecording()
         for panel in panels.values {
             panel.close()
         }
@@ -73,7 +76,9 @@ final class ScreenshotController {
     func startSession(
         primaryAction: CaptureAction = .copy, edit: (@MainActor ([FrozenDisplay]) -> EditContext?)?,
     ) async {
-        guard session == nil, scrollCapture == nil, !isStarting, ensurePermission() else { return }
+        // 录屏开始前的控制条接管着键盘，这时不能再开截图
+        guard session == nil, scrollCapture == nil, recording?.isSettingUp != true, !isStarting, ensurePermission()
+        else { return }
         isStarting = true
         defer { isStarting = false }
         let started = ContinuousClock.now
@@ -136,6 +141,9 @@ final class ScreenshotController {
         case let .image(result, .scrolling):
             previous?.activate()
             beginScrollCapture(from: result, sourceApp: previous?.bundleIdentifier)
+        case let .image(result, .record):
+            previous?.activate()
+            beginRecording(from: result)
         case let .image(result, action):
             let asksLocation = action == .save && context.settings.load(ScreenshotSettings.self).askSaveLocation
             // 识别文字时接着会打开 MAIO 的结果窗口或翻译窗口，不切回原 App
@@ -231,7 +239,7 @@ final class ScreenshotController {
         context.overlay.showError("截图失败：\(error.localizedDescription)")
     }
 
-    private func update(_ change: (inout ScreenshotSettings) -> Void) {
+    func update(_ change: (inout ScreenshotSettings) -> Void) {
         var settings = context.settings.load(ScreenshotSettings.self)
         let before = settings
         change(&settings)

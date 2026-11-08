@@ -19,8 +19,9 @@ let features: [String] = [
 
 let strict: [SwiftSetting] = [.treatAllWarnings(as: .error)]
 
-/// 热循环很多、不优化就慢几十倍的功能，Debug 也开 -O（启动器的文件索引：Debug 下单字母搜索 4 秒，开 -O 后 0.17 秒）
-let alwaysOptimized: Set<String> = ["Launcher"]
+/// 热循环很多、不优化就慢几十倍的功能，Debug 也开 -O（启动器的文件索引：Debug 下单字母搜索 4 秒，开 -O 后 0.17 秒；
+/// 截图的长截图匹配、GIF 编码逐像素处理）
+let alwaysOptimized: Set<String> = ["Launcher", "Screenshot"]
 
 func settings(for name: String) -> [SwiftSetting] {
     alwaysOptimized.contains(name) ? strict + [.unsafeFlags(["-O"])] : strict

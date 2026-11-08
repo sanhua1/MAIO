@@ -48,6 +48,7 @@ extension CaptureSession {
         case .ocr: confirm(.ocr)
         case .translate: confirm(.translate)
         case .scrolling: confirm(.scrolling)
+        case .record: confirm(.record)
         default: return false
         }
         return true

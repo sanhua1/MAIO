@@ -165,9 +165,9 @@ extension CaptureSession {
     }
 
     /// 标注相关的按键：工具字母、撤销重做、删除选中对象、方向键移动选中对象
-    /// ⌘S 保存、⌘P 贴图、⌘O 识别文字、⌘T 翻译、⌘L 长截图（按物理键位）
+    /// ⌘S 保存、⌘P 贴图、⌘O 识别文字、⌘T 翻译、⌘L 长截图、⌘R 录屏（按物理键位）
     private static let outputShortcuts: [UInt16: CaptureAction] = [
-        1: .save, 35: .pin, 31: .ocr, 17: .translate, 37: .scrolling,
+        1: .save, 35: .pin, 31: .ocr, 17: .translate, 37: .scrolling, 15: .record,
     ]
 
     private func handleAnnotationKey(_ keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {

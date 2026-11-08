@@ -14,6 +14,8 @@ enum CaptureAction {
     case translate
     /// 长截图：从选区开始往下滚动拼接
     case scrolling
+    /// 录屏（MP4 / GIF）
+    case record
 
     var recognizesText: Bool {
         self == .ocr || self == .translate
@@ -133,11 +135,12 @@ final class CaptureSession: OverlayEventHandler {
         }
         toolbarModel.perform = { [weak self] command in self?.perform(command) }
         toolbarModel.hintChanged = { [weak self] hint in self?.toolbarHoverChanged(hint) }
-        toolbarModel.canScroll = edit == nil
+        toolbarModel.capturesScreen = edit == nil
         toolbarModel.confirmHelp = switch options.primaryAction {
         case .ocr: "识别文字（⏎）"
         case .translate: "翻译（⏎）"
         case .scrolling: "开始长截图（⏎）"
+        case .record: "录屏（⏎）"
         default: "复制（⏎）"
         }
         colorPanel.onChange = { [weak self] color in self?.perform(.color(color)) }
@@ -237,8 +240,8 @@ final class CaptureSession: OverlayEventHandler {
     }
 
     func confirm(_ action: CaptureAction) {
-        // 重新编辑已有截图时不能长截图（选区是图片，不是屏幕）
-        guard action != .scrolling || edit == nil else { return }
+        // 重新编辑已有截图时不能长截图、录屏（选区是图片，不是屏幕）
+        guard (action != .scrolling && action != .record) || edit == nil else { return }
         if textField.isEditing {
             commitText()
         }

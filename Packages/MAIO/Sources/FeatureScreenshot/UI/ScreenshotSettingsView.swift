@@ -39,6 +39,7 @@ struct ScreenshotSettingsView: View {
             }
             saveRows
             pinRows
+            RecordingSettingsRows(value: $value)
             historyRows
             HStack {
                 Spacer()
