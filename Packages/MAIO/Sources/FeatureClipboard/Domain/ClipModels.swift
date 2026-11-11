@@ -129,6 +129,8 @@ struct ClipItem: Sendable, Equatable, Identifiable {
     var lastUsedAt: Date
     var byteSize: Int64
     var isPinned: Bool
+    /// 有缩略图（图片条目，或者复制的图片文件）
+    var hasThumbnail: Bool = false
 }
 
 enum ClipText {

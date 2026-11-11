@@ -35,6 +35,7 @@ public final class TranslateFeature: Feature {
 
     public func activate() async throws {
         let settings = context.settings
+        let logger = context.logger
         let model = TranslateViewModel(environment: TranslateViewModel.Environment(
             settings: { settings.load(TranslateSettings.self) },
             factory: factory,
@@ -44,6 +45,7 @@ public final class TranslateFeature: Feature {
             model: model,
             settings: { settings.load(TranslateSettings.self) },
             saveSettings: { settings.save($0) },
+            logger: { message in logger.info("\(message, privacy: .public)") },
         )
         TranslateCommands(context: context, window: window).register()
         self.window = window

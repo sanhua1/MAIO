@@ -10,21 +10,27 @@ final class TranslateWindowController {
     private let model: TranslateViewModel
     private let settings: () -> TranslateSettings
     private let saveSettings: (TranslateSettings) -> Void
+    /// 排查"翻译窗口没出来"用（窗口显示 / 失去焦点 / 关闭）
+    private let logger: (String) -> Void
     private var panel: FloatingPanel<TranslateView>?
     private var previousApp: NSRunningApplication?
     private var delegate: PanelDelegate?
     private var topLeft: CGPoint?
     /// "屏幕正中间"模式：窗口中心（随结果变高时上下同时扩展；拖动后以新位置为中心）
     private var center: CGPoint?
+    /// 窗口刚显示的时刻：刚弹出就失焦（窗口还没抢到 key 的瞬间）不算"点了别处"
+    private var shownAt: ContinuousClock.Instant?
 
     init(
         model: TranslateViewModel,
         settings: @escaping () -> TranslateSettings,
         saveSettings: @escaping (TranslateSettings) -> Void,
+        logger: @escaping (String) -> Void = { _ in },
     ) {
         self.model = model
         self.settings = settings
         self.saveSettings = saveSettings
+        self.logger = logger
         model.onClose = { [weak self] in self?.close() }
     }
 
@@ -51,11 +57,17 @@ final class TranslateWindowController {
             previousApp = front
         }
         model.prepare(text: text)
+        let isNew = panel == nil
         let panel = panel ?? makePanel(width: current.windowWidth)
         if !panel.isVisible {
             position(panel, placement: Self.placement(for: trigger, settings: current))
         }
         panel.makeKeyAndOrderFront(nil)
+        shownAt = ContinuousClock.now
+        logger(
+            "翻译窗口显示：新建 \(isNew)，字数 \(text?.count ?? -1)，"
+                + "MAIO 在前台 \(NSApp.isActive)，是 key 窗口 \(panel.isKeyWindow)",
+        )
         if text != nil {
             model.translate()
         }
@@ -63,6 +75,7 @@ final class TranslateWindowController {
 
     func close() {
         guard let panel, panel.isVisible else { return }
+        logger("翻译窗口关闭")
         model.cancel()
         model.isPinned = false
         if settings().windowPosition == .remember, let topLeft {
@@ -106,7 +119,15 @@ final class TranslateWindowController {
     }
 
     private func didResignKey() {
-        guard settings().closeOnBlur, !model.isPinned else { return }
+        // 刚弹出的一瞬间可能还没成为 key 就先收到失焦通知（例如从截图流程过来），这时不能关，
+        // 否则窗口一闪而过，看起来像"点了翻译没反应"
+        if let shownAt, ContinuousClock.now - shownAt < .milliseconds(600) {
+            logger("翻译窗口刚显示就失去焦点，忽略")
+            return
+        }
+        let closes = settings().closeOnBlur && !model.isPinned
+        logger("翻译窗口失去焦点：失焦关闭 \(settings().closeOnBlur)，固定 \(model.isPinned) → \(closes ? "关闭" : "保留")")
+        guard closes else { return }
         close()
     }
 

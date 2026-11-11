@@ -82,12 +82,15 @@ actor ClipStore {
     CREATE INDEX IF NOT EXISTS clip_data_blob ON clip_data(blob_name);
     """
 
-    private static let itemColumns = "id, kind, summary, source, created_at, last_used_at, byte_size, pinned"
+    private static let itemColumns =
+        "id, kind, summary, source, created_at, last_used_at, byte_size, pinned, thumbnail IS NOT NULL"
 
     // MARK: 写入
 
     /// 保存一次复制。内容完全相同的条目已存在时，只把它移到最前（更新最后使用时间和来源）。
-    func insert(_ payload: ClipPayload, source: String?, now: Date = Date()) throws -> ClipItem {
+    func insert(_ payload: ClipPayload, source: String?, now: Date = Date()) async throws -> ClipItem {
+        // 缩略图可能要看原文件、解码大图：先做完再碰数据库，之后的操作全同步，和以前一样原子
+        let newThumbnail = await makeThumbnail(for: payload)
         let hash = Self.hash(payload)
         var existing: Int64?
         try database.query("SELECT id FROM clip WHERE hash = ?", [.text(hash)]) { existing = $0.int(0) }
@@ -99,35 +102,50 @@ actor ClipStore {
                 "UPDATE clip SET last_used_at = ?, source = COALESCE(?, source) WHERE id = ?",
                 [time(now), source.map { .text($0) } ?? .null, .int(keep)],
             )
+            // 升级前保存的图片文件没有缩略图，再复制一次时补上
+            if payload.kind == .files, try thumbnail(keep) == nil, let newThumbnail {
+                try database.query("UPDATE clip SET thumbnail = ? WHERE id = ?", [.blob(newThumbnail), .int(keep)])
+            }
             return try item(keep)
         }
         // 最近有内容相同（格式不同）的条目、或者是同一次选择的上一个版本：删掉旧的，保存新的
         let growth = try selectionPredecessor(of: payload, source: source, now: now)
         try delete(recent.map(\.id) + [growth].compactMap(\.self))
         let id = try database.transaction {
-            try insertRow(payload, hash: hash, contentKey: contentKey, source: source, now: now)
+            try insertRow(
+                payload,
+                keys: .init(hash: hash, contentKey: contentKey),
+                source: source,
+                now: now,
+                thumbnail: newThumbnail,
+            )
         }
         return try item(id)
     }
 
+    /// 去重用的两个哈希
+    private struct RowKeys {
+        let hash: String
+        let contentKey: String?
+    }
+
     private func insertRow(
         _ payload: ClipPayload,
-        hash: String,
-        contentKey: String?,
+        keys: RowKeys,
         source: String?,
         now: Date,
+        thumbnail: Data?,
     ) throws -> Int64 {
         let searchText = Self.searchText(payload)
-        let thumbnail = payload.kind == .image ? Thumbnails.make(payload) : nil
         try database.query(
             """
             INSERT INTO clip (hash, kind, summary, search_text, source, created_at, last_used_at, byte_size, thumbnail, content_key)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
-                .text(hash), .text(payload.kind.rawValue), .text(payload.summary), .text(searchText),
+                .text(keys.hash), .text(payload.kind.rawValue), .text(payload.summary), .text(searchText),
                 source.map { .text($0) } ?? .null, time(now), time(now), .int(payload.byteSize),
-                thumbnail.map { .blob($0) } ?? .null, contentKey.map { .text($0) } ?? .null,
+                thumbnail.map { .blob($0) } ?? .null, keys.contentKey.map { .text($0) } ?? .null,
             ],
         )
         let id = database.lastInsertID
@@ -290,7 +308,7 @@ extension ClipStore {
             id: row.int(0), kind: ClipKind(rawValue: row.text(1) ?? "") ?? .text, summary: row.text(2) ?? "",
             sourceBundleID: row.text(3), createdAt: Date(timeIntervalSince1970: Double(row.int(4)) / 1000),
             lastUsedAt: Date(timeIntervalSince1970: Double(row.int(5)) / 1000), byteSize: row.int(6),
-            isPinned: row.int(7) != 0,
+            isPinned: row.int(7) != 0, hasThumbnail: row.int(8) != 0,
         )
     }
 

@@ -1,3 +1,4 @@
+import AppKit
 @testable import FeatureClipboard
 import Foundation
 import MAIOKit
@@ -18,6 +19,20 @@ struct ClipboardTests {
         let binding = ClipboardFeature.manifest.defaultBindings.first
         #expect(binding?.command == ClipboardCommands.show)
         #expect(binding?.trigger == .hotkey(KeyChord(keyCode: 9, modifiers: .control)))
+    }
+
+    @Test func `thumbnail is never enlarged beyond its own size`() {
+        let small = NSImage(size: CGSize(width: 8, height: 8))
+        #expect(ClipRowView.displaySize(for: small) == CGSize(width: 8, height: 8))
+        let wide = NSImage(size: CGSize(width: 40, height: 3))
+        #expect(ClipRowView.displaySize(for: wide) == CGSize(width: 40, height: 3))
+    }
+
+    @Test func `large thumbnail shrinks to fit the row`() {
+        let large = NSImage(size: CGSize(width: 400, height: 88))
+        #expect(ClipRowView.displaySize(for: large) == ClipRowView.maxThumbnailSize)
+        let tall = NSImage(size: CGSize(width: 120, height: 300))
+        #expect(ClipRowView.displaySize(for: tall) == CGSize(width: 18, height: 44))
     }
 }
 

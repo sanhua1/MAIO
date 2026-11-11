@@ -1,6 +1,9 @@
+import CoreGraphics
 @testable import FeatureClipboard
 import Foundation
+import ImageIO
 import Testing
+import UniformTypeIdentifiers
 
 struct ClipStoreTests {
     private func makeStore() throws -> (ClipStore, URL) {
@@ -134,5 +137,72 @@ struct ClipStoreTests {
         #expect(stats.total.count == 2)
         #expect(stats.total.bytes == 200)
         #expect(stats.pinned.count == 1)
+    }
+
+    // MARK: 图片文件预览
+
+    private func filePayload(_ url: URL) -> ClipPayload {
+        ClipPayload(representations: [Representation(itemIndex: 0, type: PasteType.fileURL, data: Data(url.absoluteString.utf8))])
+    }
+
+    private func pngData() throws -> Data {
+        guard let context = CGContext(
+            data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue,
+        ), let image = context.makeImage() else { throw CocoaError(.fileReadCorruptFile) }
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(output, UTType.png.identifier as CFString, 1, nil)
+        else { throw CocoaError(.fileReadCorruptFile) }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { throw CocoaError(.fileReadCorruptFile) }
+        return output as Data
+    }
+
+    @Test func `image file gets a thumbnail and preview`() async throws {
+        let (store, directory) = try makeStore()
+        let file = directory.appending(path: "red.png")
+        try pngData().write(to: file)
+        let item = try await store.insert(filePayload(file), source: "com.apple.finder")
+        #expect(item.kind == .files)
+        #expect(item.hasThumbnail)
+        #expect(try await store.thumbnail(item.id) != nil)
+        #expect(try await store.items(matching: "", limit: 10).first?.hasThumbnail == true)
+        let payload = try await store.payload(item.id)
+        let preview = try #require(await store.previewImage(for: item, payload: payload))
+        #expect(preview.pixelSize == CGSize(width: 8, height: 8))
+    }
+
+    @Test func `text and missing files get no thumbnail`() async throws {
+        let (store, directory) = try makeStore()
+        let textFile = directory.appending(path: "notes.txt")
+        try Data("hello".utf8).write(to: textFile)
+        let text = try await store.insert(filePayload(textFile), source: nil)
+        #expect(!text.hasThumbnail)
+        let missing = try await store.insert(filePayload(directory.appending(path: "gone.png")), source: nil)
+        #expect(!missing.hasThumbnail)
+        #expect(try await store.thumbnail(missing.id) == nil)
+    }
+
+    @Test func `preview falls back to archived thumbnail after file moves away`() async throws {
+        let (store, directory) = try makeStore()
+        let file = directory.appending(path: "red.png")
+        try pngData().write(to: file)
+        let item = try await store.insert(filePayload(file), source: nil)
+        try FileManager.default.removeItem(at: file)
+        let payload = try await store.payload(item.id)
+        #expect(await store.previewImage(for: item, payload: payload) != nil)
+    }
+
+    @Test func `backfills thumbnails for old file entries`() async throws {
+        let (store, directory) = try makeStore()
+        let file = directory.appending(path: "red.png")
+        try pngData().write(to: file)
+        let item = try await store.insert(filePayload(file), source: nil)
+        // 模拟升级前保存的条目：缩略图为空
+        let database = try SQLiteDatabase(path: directory.appending(path: "history.sqlite").path)
+        try database.query("UPDATE clip SET thumbnail = NULL WHERE id = ?", [.int(item.id)])
+        #expect(try await store.backfillFileThumbnails() == 1)
+        #expect(try await store.thumbnail(item.id) != nil)
+        #expect(try await store.items(matching: "", limit: 10).first?.hasThumbnail == true)
     }
 }

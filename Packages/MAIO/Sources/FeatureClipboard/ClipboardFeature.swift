@@ -56,6 +56,12 @@ public final class ClipboardFeature: Feature {
         apply(settings.load(ClipboardSettings.self))
         monitor.start()
         watchSettings()
+        // 升级前保存的图片文件没有缩略图：原文件还在的补一份，旧记录也能看到预览
+        Task {
+            if let count = try? await store.backfillFileThumbnails(), count > 0 {
+                logger.info("为 \(count) 个文件条目补了缩略图")
+            }
+        }
         try await store.enforce(limit: settings.load(ClipboardSettings.self).storageLimit.bytes)
         // macOS 15.4 起读取剪贴板可能需要用户授权（见 ADR-0010），记录当前状态方便排查
         context.logger.info("剪贴板读取权限：\(NSPasteboard.general.accessBehavior.rawValue)（0 默认 1 询问 2 允许 3 拒绝）")

@@ -1,6 +1,15 @@
 import AppKit
 import Observation
 
+/// 空格预览的内容。图片条目和图片文件都带一张大图，预览时直接显示。
+struct ClipPreviewContent {
+    let item: ClipItem
+    let payload: ClipPayload
+    let image: NSImage?
+    /// 原图的像素尺寸（显示在右上角）
+    let pixelSize: CGSize?
+}
+
 /// 弹出列表的状态：搜索、选择、预览，以及缩略图 / 图标缓存。
 @MainActor
 @Observable
@@ -14,7 +23,7 @@ final class ClipboardViewModel {
     }
 
     /// 正在预览的条目内容
-    private(set) var preview: (item: ClipItem, payload: ClipPayload)?
+    private(set) var preview: ClipPreviewContent?
     private(set) var thumbnails: [Int64: NSImage] = [:]
     /// 每次打开时加一，用于让搜索框重新获得焦点、列表滚到顶部
     private(set) var openToken = 0
@@ -25,6 +34,9 @@ final class ClipboardViewModel {
     @ObservationIgnored var onClose: (() -> Void)?
     @ObservationIgnored private let store: ClipStore
     @ObservationIgnored private var reloadTask: Task<Void, Never>?
+    @ObservationIgnored private var previewTask: Task<Void, Never>?
+    /// 正在读取缩略图的条目，避免同一行反复请求
+    @ObservationIgnored private var loadingThumbnails: Set<Int64> = []
     @ObservationIgnored private var icons: [String: NSImage] = [:]
 
     init(store: ClipStore) {
@@ -108,6 +120,7 @@ final class ClipboardViewModel {
         guard let item = picker.selected else { return }
         picker.remove(item.id)
         thumbnails[item.id] = nil
+        loadingThumbnails.remove(item.id)
         Task { [store] in try? await store.delete([item.id]) }
         refreshPreview()
     }
@@ -150,13 +163,19 @@ final class ClipboardViewModel {
     }
 
     private func showPreview() {
+        // 方向键连按时只保留最后一次：前一次的预览结果直接丢掉
+        previewTask?.cancel()
         guard let item = picker.selected else {
             preview = nil
             return
         }
-        Task { [weak self, store] in
-            guard let payload = try? await store.payload(item.id) else { return }
-            self?.preview = (item, payload)
+        previewTask = Task { [weak self, store] in
+            guard let payload = try? await store.payload(item.id), !Task.isCancelled else { return }
+            let loaded = await store.previewImage(for: item, payload: payload)
+            guard !Task.isCancelled else { return }
+            self?.preview = ClipPreviewContent(
+                item: item, payload: payload, image: loaded?.image, pixelSize: loaded?.pixelSize,
+            )
         }
     }
 
@@ -166,8 +185,11 @@ final class ClipboardViewModel {
         if let cached = thumbnails[item.id] {
             return cached
         }
+        guard item.hasThumbnail, loadingThumbnails.insert(item.id).inserted else { return nil }
         Task { [weak self, store] in
-            guard let data = try? await store.thumbnail(item.id), let image = NSImage(data: data) else { return }
+            let data = try? await store.thumbnail(item.id)
+            self?.loadingThumbnails.remove(item.id)
+            guard let data, let image = NSImage(data: data) else { return }
             self?.thumbnails[item.id] = image
         }
         return nil

@@ -16,7 +16,7 @@ struct ClipboardPanelView: View {
             ZStack {
                 ClipListView(model: model)
                 if let preview = model.preview {
-                    ClipPreviewView(item: preview.item, payload: preview.payload)
+                    ClipPreviewView(content: preview)
                 }
             }
             Divider()
