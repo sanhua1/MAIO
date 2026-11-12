@@ -33,10 +33,23 @@ struct WindowPickerTests {
             window(5, CGRect(x: 0, y: 0, width: 300, height: 300), alpha: 0),
             window(6, CGRect(x: 0, y: 30, width: 2560, height: 1358)),
         ]
-        let candidates = WindowPicker.candidates(windows, excludingPID: 99, displays: [screen])
+        let candidates = WindowPicker.candidates(windows, ownPID: 99, excludedIDs: [3], displays: [screen])
         #expect(candidates.map(\.id) == [6])
         #expect(WindowPicker.window(at: CGPoint(x: 10, y: 10), in: candidates) == nil)
         #expect(WindowPicker.window(at: CGPoint(x: 10, y: 100), in: candidates)?.id == 6)
+    }
+
+    @Test func `own panels are candidates except full screen and pass-through ones`() {
+        let screen = CGRect(x: 0, y: 0, width: 2560, height: 1440)
+        let windows = [
+            window(1, CGRect(x: 900, y: 500, width: 720, height: 480), pid: 99, layer: 101),
+            window(2, screen, pid: 99, layer: 25),
+            window(3, CGRect(x: 1200, y: 1300, width: 200, height: 40), pid: 99),
+            window(4, CGRect(x: 0, y: 30, width: 2560, height: 1358)),
+        ]
+        let candidates = WindowPicker.candidates(windows, ownPID: 99, excludedIDs: [3], displays: [screen])
+        #expect(candidates.map(\.id) == [1, 4])
+        #expect(WindowPicker.window(at: CGPoint(x: 1000, y: 600), in: candidates)?.id == 1)
     }
 
     @Test func `topmost window wins`() {

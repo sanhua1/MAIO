@@ -55,6 +55,8 @@ final class LauncherViewModel {
     /// 打开选中项（第二个参数：是否改为在 Finder 中显示）
     var onOpen: ((LauncherItem, Bool) -> Void)?
     var onClose: (() -> Void)?
+    /// 右下角齿轮：打开 MAIO 设置
+    var onOpenSettings: (() -> Void)?
 
     var selected: LauncherItem? {
         items.indices.contains(selectedIndex) ? items[selectedIndex] : nil

@@ -50,8 +50,12 @@ final class ClipboardViewModel {
     @ObservationIgnored var keyIsComposing = false
 
     /// 每次弹出时调用：清空搜索、选中第一条
-    func prepareForOpen(searchMode: ClipboardSettings.SearchMode) {
+    /// 搜索时也搜图片里识别出的文字（设置开关）
+    private var searchesImageText = true
+
+    func prepareForOpen(searchMode: ClipboardSettings.SearchMode, searchImageText: Bool) {
         self.searchMode = searchMode
+        searchesImageText = searchImageText
         isSearching = searchMode == .typeToSearch
         preview = nil
         openToken += 1
@@ -65,8 +69,10 @@ final class ClipboardViewModel {
     func reload(keepSelection: Bool = false) {
         reloadTask?.cancel()
         let query = query
+        let imageText = searchesImageText
         reloadTask = Task { [weak self, store] in
-            guard let items = try? await store.items(matching: query, limit: Self.pageSize), !Task.isCancelled
+            guard let items = try? await store.items(matching: query, limit: Self.pageSize, includeImageText: imageText),
+                  !Task.isCancelled
             else { return }
             self?.picker.setItems(items, keepSelection: keepSelection)
         }

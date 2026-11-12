@@ -6,10 +6,6 @@ struct ScreenshotCommands {
     static let capture: CommandID = "screenshot.capture"
     static let fullScreen: CommandID = "screenshot.fullScreen"
     static let window: CommandID = "screenshot.window"
-    static let ocr: CommandID = "screenshot.ocr"
-    static let translate: CommandID = "screenshot.translate"
-    static let scrolling: CommandID = "screenshot.scrolling"
-    static let record: CommandID = "screenshot.record"
     static let pinClipboard: CommandID = "screenshot.pinClipboard"
     static let pinLast: CommandID = "screenshot.pinLast"
     static let history: CommandID = "screenshot.history"
@@ -18,22 +14,9 @@ struct ScreenshotCommands {
     static let descriptors: [CommandDescriptor] = [
         CommandDescriptor(
             id: capture, title: "截图",
-            summary: "冻结屏幕后框选区域，自动识别窗口（按住 ⌘ 识别控件），可以标注。⏎ 复制，⌘S 保存，⌘P 贴图，⌘O 识别文字，⌘T 翻译，⌘L 长截图。默认 ⌥F1",
+            summary: "冻结屏幕后框选区域，自动识别窗口（按住 ⌘ 识别控件），可以标注。⏎ 复制，⌘S 保存，⌘P 贴图，⌘O 识别文字，⌘T 翻译，⌘L 长截图，⌘R 录屏。默认 ⌥F1",
         ),
-        CommandDescriptor(id: fullScreen, title: "全屏截图", summary: "截取鼠标所在的屏幕，直接复制并写入截图历史"),
-        CommandDescriptor(
-            id: ocr, title: "截图识别文字",
-            summary: "框选区域后按 ⏎ 识别其中的文字（系统 Vision，离线），在结果窗口里编辑、复制、翻译",
-        ),
-        CommandDescriptor(id: translate, title: "截图翻译", summary: "框选区域后按 ⏎ 识别文字并直接打开翻译窗口"),
-        CommandDescriptor(
-            id: scrolling, title: "长截图",
-            summary: "框选区域后按 ⏎ 开始：自己用滚轮往下滚，自动拼接，右侧显示长条预览；Esc / ⏎ / 完成按钮结束，然后进入标注",
-        ),
-        CommandDescriptor(
-            id: record, title: "录屏",
-            summary: "框选区域后按 ⏎，在控制条上选 MP4 或 GIF（MP4 可以录系统声音和麦克风）再开始。录制中再按一次结束并保存，文件同时复制到剪贴板。默认 ⌥F3",
-        ),
+        CommandDescriptor(id: fullScreen, title: "全屏截图", summary: "截取鼠标所在的屏幕，直接复制并写入截图历史。默认 ⌘⌥F1"),
         CommandDescriptor(id: window, title: "窗口截图", summary: "截取最前面的窗口（保留圆角，不带阴影），直接复制并写入截图历史"),
         CommandDescriptor(
             id: pinClipboard, title: "贴剪贴板内容",
@@ -51,10 +34,6 @@ struct ScreenshotCommands {
     func register() {
         let handlers: [CommandID: @MainActor () async -> Void] = [
             Self.capture: { await controller.capture() },
-            Self.ocr: { await controller.capture(primaryAction: .ocr) },
-            Self.translate: { await controller.capture(primaryAction: .translate) },
-            Self.scrolling: { await controller.capture(primaryAction: .scrolling) },
-            Self.record: { await controller.toggleRecording() },
             Self.fullScreen: { await controller.captureFullScreen() },
             Self.window: { await controller.captureFrontWindow() },
             Self.pinClipboard: { await controller.pinClipboard() },

@@ -61,4 +61,6 @@ struct ClipboardSettings: FeatureSettings {
     var recordRichText = true
     var recordImages = true
     var recordFiles = true
+    /// 后台识别图片里的文字，搜索时也能搜到（系统 Vision，离线）
+    var searchImageText = true
 }

@@ -20,6 +20,8 @@ final class HistoryBrowserModel {
     var selection: String?
     var stats: ScreenshotHistoryStore.Stats?
     var thumbnails: [String: NSImage] = [:]
+    /// 每条记录的最终图（拖出去时要同步拿到路径）
+    private var imageURLs: [String: URL] = [:]
 
     init(store: ScreenshotHistoryStore, actions: Actions) {
         self.store = store
@@ -33,6 +35,11 @@ final class HistoryBrowserModel {
     func reload() async {
         records = await store.records
         stats = await store.stats
+        var urls: [String: URL] = [:]
+        for record in records {
+            urls[record.id] = await store.finalImageURL(for: record)
+        }
+        imageURLs = urls
         let ids = Set(records.map(\.id))
         thumbnails = thumbnails.filter { ids.contains($0.key) }
     }
@@ -60,13 +67,23 @@ final class HistoryBrowserModel {
         await reload()
     }
 
+    /// 拖到访达、聊天窗口：拖的是临时副本（`HistoryDragCopy`），不是历史目录里的文件
+    func dragItem(for record: ScreenshotRecord) -> NSItemProvider {
+        guard let source = imageURLs[record.id], let copy = HistoryDragCopy.make(from: source, date: record.createdAt) else {
+            return NSItemProvider()
+        }
+        let provider = NSItemProvider(object: copy as NSURL)
+        provider.suggestedName = copy.deletingPathExtension().lastPathComponent
+        return provider
+    }
+
     func reveal(_ id: String) async {
         let folder = await store.folder(for: id)
         NSWorkspace.shared.activateFileViewerSelecting([folder])
     }
 }
 
-/// 截图历史面板：按日期分组的缩略图网格。双击贴图，⌘C 复制，E 重新编辑标注，⌫ 删除。
+/// 截图历史面板：按日期分组的缩略图网格。双击贴图，⌘C 复制，E 重新编辑标注，⌫ 删除，拖出去是图片文件。
 struct HistoryBrowser: View {
     @Bindable var model: HistoryBrowserModel
     @FocusState private var gridFocused: Bool
@@ -182,6 +199,8 @@ private struct HistoryCell: View {
         .contentShape(.rect)
         .onTapGesture(count: 2) { model.actions.pin(record.id) }
         .onTapGesture { model.selection = record.id }
+        // 拖到访达、微信等聊天窗口（和拖一个 png 文件一样）
+        .onDrag { model.dragItem(for: record) }
         .contextMenu { menu }
         .task(id: record.id) { image = await model.thumbnail(for: record.id) }
     }

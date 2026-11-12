@@ -131,6 +131,8 @@ struct ClipItem: Sendable, Equatable, Identifiable {
     var isPinned: Bool
     /// 有缩略图（图片条目，或者复制的图片文件）
     var hasThumbnail: Bool = false
+    /// 搜索命中了图片里识别出的文字时，命中处附近的一段（列表里显示在缩略图旁边）
+    var textInImage: String?
 }
 
 enum ClipText {
@@ -149,6 +151,17 @@ enum ClipText {
         let new = normalized(new)
         guard !old.isEmpty, !new.isEmpty else { return false }
         return new.contains(old) || old.contains(new)
+    }
+
+    /// 搜索词里有没在普通搜索文字（文字内容、文件路径）里出现、而在图片文字里出现的：返回第一个这样的词附近的一段。
+    /// 搜索词都已经是小写；图片文字保存时也是小写，所以显示的是小写（只用来提示命中位置）。
+    static func imageTextSnippet(words: [String], searchText: String, ocrText: String, radius: Int = 16) -> String? {
+        guard let word = words.first(where: { !searchText.contains($0) && ocrText.contains($0) }),
+              let range = ocrText.range(of: word) else { return nil }
+        let start = ocrText.index(range.lowerBound, offsetBy: -radius, limitedBy: ocrText.startIndex) ?? ocrText.startIndex
+        let end = ocrText.index(range.upperBound, offsetBy: radius, limitedBy: ocrText.endIndex) ?? ocrText.endIndex
+        let body = ocrText[start ..< end].split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return (start > ocrText.startIndex ? "…" : "") + body + (end < ocrText.endIndex ? "…" : "")
     }
 
     /// 合并空白、截断，用于一行显示

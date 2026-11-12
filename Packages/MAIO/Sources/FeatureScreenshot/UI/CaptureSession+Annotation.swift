@@ -44,7 +44,7 @@ extension CaptureSession {
         case .cancel: finish(.cancelled)
         case .save: confirm(.save)
         case .pin: confirm(.pin)
-        case .copy: confirm(options.primaryAction)
+        case .copy: confirm(.copy)
         case .ocr: confirm(.ocr)
         case .translate: confirm(.translate)
         case .scrolling: confirm(.scrolling)

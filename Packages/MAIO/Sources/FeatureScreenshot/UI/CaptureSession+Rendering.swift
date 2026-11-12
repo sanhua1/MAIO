@@ -98,6 +98,7 @@ extension CaptureSession {
             pixelX: Int((x * display.scale).rounded(.down)),
             pixelY: Int((y * display.scale).rounded(.down)),
             lines: ["\(Int(x)), \(Int(y))", colorText, "C 复制 · ⇧ 切换"],
+            hints: ["F1：截取全屏并复制", "F2：打开截图历史"],
             color: color.map { CGColor(
                 srgbRed: CGFloat($0.red) / 255, green: CGFloat($0.green) / 255, blue: CGFloat($0.blue) / 255, alpha: 1,
             ) },

@@ -39,19 +39,9 @@ actor ClipStore {
         try FileManager.default.createDirectory(at: blobs, withIntermediateDirectories: true)
         database = try SQLiteDatabase(path: directory.appending(path: "history.sqlite").path)
         try database.execute(Self.schema)
-        try Self.addContentKeyColumn(database)
-    }
-
-    /// 旧数据库没有 content_key 列时补上（旧条目为空，不参与"内容相同"的判断）
-    private static func addContentKeyColumn(_ database: SQLiteDatabase) throws {
-        var exists = false
-        try database.query("PRAGMA table_info(clip)") { row in
-            if row.text(1) == "content_key" {
-                exists = true
-            }
-        }
-        guard !exists else { return }
-        try database.execute("ALTER TABLE clip ADD COLUMN content_key TEXT")
+        // 旧数据库补列：content_key 为空的旧条目不参与"内容相同"的判断；ocr_text 为空表示还没识别（后台补）
+        try Self.addColumn("content_key", to: database)
+        try Self.addColumn("ocr_text", to: database)
     }
 
     private static let schema = """
@@ -180,7 +170,8 @@ actor ClipStore {
     // MARK: 读取
 
     /// 列表数据。没有搜索词时返回最近 limit 条 + 全部固定条目；有搜索词时返回匹配的（每个词都要出现）。
-    func items(matching query: String, limit: Int) throws -> [ClipItem] {
+    /// includeImageText：也搜图片里识别出的文字，命中时 `textInImage` 是命中处附近的一段
+    func items(matching query: String, limit: Int, includeImageText: Bool = true) throws -> [ClipItem] {
         let words = query.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
         var result: [ClipItem] = []
         if words.isEmpty {
@@ -191,11 +182,18 @@ actor ClipStore {
             try database.query("SELECT \(Self.itemColumns) FROM clip WHERE pinned = 1") { result.append(Self.item(from: $0)) }
             return result
         }
-        let conditions = words.map { _ in "instr(search_text, ?) > 0" }.joined(separator: " AND ")
+        let haystack = includeImageText ? "search_text || char(10) || COALESCE(ocr_text, '')" : "search_text"
+        let conditions = words.map { _ in "instr(\(haystack), ?) > 0" }.joined(separator: " AND ")
         try database.query(
-            "SELECT \(Self.itemColumns) FROM clip WHERE \(conditions) ORDER BY last_used_at DESC LIMIT ?",
+            "SELECT \(Self.itemColumns), search_text, ocr_text FROM clip WHERE \(conditions) ORDER BY last_used_at DESC LIMIT ?",
             words.map { .text($0) } + [.int(Int64(limit))],
-        ) { result.append(Self.item(from: $0)) }
+        ) { row in
+            var item = Self.item(from: row)
+            if includeImageText, let ocr = row.text(10), !ocr.isEmpty {
+                item.textInImage = ClipText.imageTextSnippet(words: words, searchText: row.text(9) ?? "", ocrText: ocr)
+            }
+            result.append(item)
+        }
         return result
     }
 
@@ -297,6 +295,17 @@ actor ClipStore {
 // MARK: 工具（放在扩展里，主体不超过 250 行）
 
 extension ClipStore {
+
+    static func addColumn(_ name: String, to database: SQLiteDatabase) throws {
+        var exists = false
+        try database.query("PRAGMA table_info(clip)") { row in
+            if row.text(1) == name {
+                exists = true
+            }
+        }
+        guard !exists else { return }
+        try database.execute("ALTER TABLE clip ADD COLUMN \(name) TEXT")
+    }
 
     /// 时间存为毫秒整数，避免浮点比较的误差
     func time(_ date: Date) -> SQLiteDatabase.Value {

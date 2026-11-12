@@ -205,4 +205,30 @@ struct ClipStoreTests {
         #expect(try await store.thumbnail(item.id) != nil)
         #expect(try await store.items(matching: "", limit: 10).first?.hasThumbnail == true)
     }
+
+    @Test func `searches text recognized in images`() async throws {
+        let (store, _) = try makeStore()
+        let png = try ClipPayload(representations: [Representation(itemIndex: 0, type: PasteType.png, data: pngData())])
+        let picture = try await store.insert(png, source: nil, now: Date(timeIntervalSince1970: 1))
+        _ = try await store.insert(text("invoice draft"), source: nil, now: Date(timeIntervalSince1970: 2))
+        #expect(try await store.nextImageWithoutText() == picture.id)
+        #expect(await store.imageForRecognition(picture.id) != nil)
+        try await store.setImageText("Total Invoice 128 元 已付款", for: picture.id)
+        #expect(try await store.nextImageWithoutText() == nil)
+
+        let hits = try await store.items(matching: "invoice", limit: 10)
+        #expect(hits.count == 2)
+        // 文字条目本身就含 invoice，不显示图片文字；图片条目显示命中处附近
+        #expect(hits.first { $0.id == picture.id }?.textInImage?.contains("invoice") == true)
+        #expect(hits.first { $0.id != picture.id }?.textInImage == nil)
+        #expect(try await store.items(matching: "已付款", limit: 10).map(\.id) == [picture.id])
+        #expect(try await store.items(matching: "已付款", limit: 10, includeImageText: false).isEmpty)
+    }
+
+    @Test func `image text snippet trims around the hit`() {
+        let ocr = String(repeating: "a", count: 40) + " 发票号码 12345 " + String(repeating: "b", count: 40)
+        let snippet = ClipText.imageTextSnippet(words: ["12345"], searchText: "", ocrText: ocr, radius: 6)
+        #expect(snippet == "…发票号码 12345 bbbbb…")
+        #expect(ClipText.imageTextSnippet(words: ["12345"], searchText: "x 12345", ocrText: ocr) == nil)
+    }
 }

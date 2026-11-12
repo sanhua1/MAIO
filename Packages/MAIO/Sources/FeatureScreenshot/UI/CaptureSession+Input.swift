@@ -22,7 +22,7 @@ extension CaptureSession {
         // 重新编辑时选区固定：只有双击选区（完成）有效
         if let edit {
             if clickCount >= 2, edit.rect.contains(point) {
-                confirm(options.primaryAction)
+                confirm(.copy)
             }
             return
         }
@@ -33,7 +33,7 @@ extension CaptureSession {
         }
         let effect = interaction.mouseDown(at: point, clickCount: clickCount, displayBounds: display.bounds)
         if effect == .confirm {
-            confirm(options.primaryAction)
+            confirm(.copy)
             return
         }
         if case .moving = interaction.drag {
@@ -145,7 +145,7 @@ extension CaptureSession {
         }
         switch (event.keyCode, modifiers) {
         case (53, _): cancelOneLevel()
-        case (36, []), (76, []): confirm(options.primaryAction)
+        case (36, []), (76, []): confirm(.copy)
         case (8, [.command]):
             if interaction.selection != nil {
                 confirm(.copy)
@@ -159,7 +159,7 @@ extension CaptureSession {
                 confirm(action)
             }
         case (123 ... 126, []), (123 ... 126, [.shift]): nudge(keyCode: event.keyCode, resize: modifiers == .shift)
-        default: return false
+        default: return handleFunctionKey(event.keyCode, modifiers: modifiers)
         }
         return true
     }
@@ -231,6 +231,29 @@ extension CaptureSession {
         updateHover()
         updateCursorShape()
         render()
+    }
+
+    /// F1 / F2（物理键位；「将 F1、F2 等键用作标准功能键」关闭时要按 fn+F1）
+    private static let f1: UInt16 = 122
+    private static let f2: UInt16 = 120
+
+    /// F1 直接截全屏，F2 打开截图历史（放大镜下方有提示）
+    private func handleFunctionKey(_ keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        guard modifiers.isEmpty else { return false }
+        switch keyCode {
+        case Self.f1: captureWholeDisplay()
+        case Self.f2 where edit == nil: finish(.openHistory)
+        default: return false
+        }
+        return true
+    }
+
+    /// F1：鼠标所在屏幕整个复制（用冻结的画面，和 ⌘A 再 ⏎ 一样，写入历史）。已经画了标注时不响应，免得丢掉
+    private func captureWholeDisplay() {
+        guard edit == nil, editor.document.isEmpty, let display = display(at: cursor) else { return }
+        interaction.select(display.display.bounds, displayBounds: display.display.bounds)
+        guard let result = makeResult() else { return }
+        finish(.fullScreen(result))
     }
 
     private func selectWholeDisplay() {

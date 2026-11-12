@@ -37,7 +37,7 @@ struct CaptureToolbar: View {
                 iconButton("square.and.arrow.down", help: "保存（⌘S）") { model.perform(.save) }
                 iconButton("pin", help: "贴图（⌘P），同时复制") { model.perform(.pin) }
                 iconButton("xmark", help: "取消（Esc）") { model.perform(.cancel) }
-                iconButton("checkmark", help: model.confirmHelp) { model.perform(.copy) }
+                iconButton("checkmark", help: "复制（⏎）") { model.perform(.copy) }
             }
             ToolOptionsRow(model: model)
                 .opacity(model.activeTool == nil ? 0.35 : 1)

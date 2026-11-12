@@ -18,7 +18,6 @@ final class ClipboardPanelController {
     /// 调用其他功能的契约（贴图、翻译）
     let commands: any CommandRegistrar
     private var panel: FloatingPanel<ClipboardPanelView>?
-    private var delegate: PanelDelegate?
     private var isOpening = false
     private var previousApp: NSRunningApplication?
     private var keyMonitor: Any?
@@ -66,7 +65,7 @@ final class ClipboardPanelController {
             previousApp = front
         }
         let origin = await topLeft(for: settings().popupPosition)
-        model.prepareForOpen(searchMode: settings().searchMode)
+        model.prepareForOpen(searchMode: settings().searchMode, searchImageText: settings().searchImageText)
         let panel = panel ?? makePanel()
         panel.setContentSize(ClipboardPanelView.size)
         panel.setFrameTopLeftPoint(origin)
@@ -97,27 +96,30 @@ final class ClipboardPanelController {
         keyMonitor = nil
     }
 
-    func close(restoreFocus: Bool) {
+    /// 返回 true 表示焦点还给了弹出剪贴板前正在用的 MAIO 面板（启动器、翻译等）
+    @discardableResult
+    func close(restoreFocus: Bool) -> Bool {
         removeKeyMonitor()
-        guard let panel, panel.isVisible else { return }
-        panel.orderOut(nil)
+        guard let panel, panel.isVisible else { return false }
+        if panel.dismiss() {
+            return true
+        }
         if restoreFocus, NSApp.isActive, let previousApp, !previousApp.isTerminated {
             previousApp.activate()
         }
+        return false
     }
 
     func tearDown() {
         removeKeyMonitor()
         panel?.orderOut(nil)
-        panel?.delegate = nil
         panel = nil
-        delegate = nil
     }
 
     private func paste(_ item: ClipItem, plainText: Bool) {
-        let target = previousApp
         let current = settings()
-        close(restoreFocus: false)
+        // 从启动器、翻译里呼出时粘贴到那个面板里，不切回原来的 App
+        let target = close(restoreFocus: false) ? nil : previousApp
         Task {
             do {
                 var payload = try await store.payload(item.id)
@@ -149,9 +151,8 @@ final class ClipboardPanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         // ⌘W 直接关闭面板（和最后一次 Esc 一样，焦点还给原来的 App）
         panel.onCloseCommand = { [weak self] in self?.close(restoreFocus: true) }
-        let delegate = PanelDelegate { [weak self] in self?.close(restoreFocus: false) }
-        panel.delegate = delegate
-        self.delegate = delegate
+        // 点了别处时关闭（转到另一个 MAIO 面板时不关，见 FloatingPanel 的焦点链）
+        panel.onFocusLost = { [weak self] in self?.close(restoreFocus: false) }
         self.panel = panel
         return panel
     }
@@ -189,19 +190,5 @@ final class ClipboardPanelController {
 
     private static func screen(containing point: CGPoint) -> NSScreen? {
         NSScreen.screens.first { $0.frame.insetBy(dx: -1, dy: -1).contains(point) } ?? NSScreen.main
-    }
-}
-
-/// 面板失去焦点（点了别处）时关闭。
-@MainActor
-private final class PanelDelegate: NSObject, NSWindowDelegate {
-    private let resignedKey: () -> Void
-
-    init(resignedKey: @escaping () -> Void) {
-        self.resignedKey = resignedKey
-    }
-
-    func windowDidResignKey(_: Notification) {
-        resignedKey()
     }
 }

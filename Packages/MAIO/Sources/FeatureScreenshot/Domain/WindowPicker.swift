@@ -18,9 +18,18 @@ enum WindowPicker {
     static let minimumSize: CGFloat = 8
 
     /// 过滤掉不应该被选中的窗口，保持原有的上下顺序。
-    static func candidates(_ windows: [WindowInfo], excludingPID: Int32, displays: [CGRect]) -> [WindowInfo] {
+    /// MAIO 自己的窗口（启动器、剪贴板、翻译、贴图……）照样能识别，只排除：
+    /// - `excludedIDs`：不接收鼠标的装饰窗口（HUD、录屏边框、提示条）；
+    /// - 盖住整个屏幕的（透明遮罩之类，不排除的话处处都会命中它）。
+    static func candidates(
+        _ windows: [WindowInfo], ownPID: Int32, excludedIDs: Set<UInt32> = [], displays: [CGRect],
+    ) -> [WindowInfo] {
         windows.filter { window in
-            guard window.pid != excludingPID, window.layer >= 0, window.alpha >= 0.05, window.frame.width >= minimumSize,
+            if window.pid == ownPID,
+               excludedIDs.contains(window.id) || displays.contains(where: { window.frame.contains($0) }) {
+                return false
+            }
+            guard window.layer >= 0, window.alpha >= 0.05, window.frame.width >= minimumSize,
                   window.frame.height >= minimumSize else { return false }
             // Window Server 自己的窗口：鼠标指针、菜单栏背景等
             if window.bundleID == nil, window.ownerName == "Window Server" {

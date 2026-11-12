@@ -20,7 +20,7 @@ extension CaptureSession {
         let windowRect = window.map { $0.frame.intersection(bounds) } ?? bounds
         highlight = windowRect
         if let window, detectsControls {
-            requestElement(ElementRequest(point: cursor, pid: window.pid, clip: windowRect))
+            requestElement(ElementRequest(point: cursor, pid: window.pid, windowID: window.id, clip: windowRect))
         }
     }
 
@@ -31,7 +31,10 @@ extension CaptureSession {
         elementTask = Task { [weak self] in
             while let request = self?.pendingElement {
                 self?.pendingElement = nil
-                let frame = await self?.locator.frame(at: request.point, pid: request.pid)
+                // MAIO 自己的窗口：遮罩在最上层，跨进程的辅助功能查询会命中遮罩，改为在本进程里直接问那个窗口
+                let frame = request.pid == getpid()
+                    ? ElementLocator.ownFrame(at: request.point, windowID: request.windowID)
+                    : await self?.locator.frame(at: request.point, pid: request.pid)
                 guard let self, !Task.isCancelled else { return }
                 if self.pendingElement == nil, self.cursor == request.point, self.detectsControls,
                    self.interaction.selection == nil, !self.interaction.isDragging, let frame {

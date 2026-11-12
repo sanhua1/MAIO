@@ -30,6 +30,7 @@ public final class ClipboardFeature: Feature {
     private var store: ClipStore?
     private var monitor: PasteboardMonitor?
     private var panel: ClipboardPanelController?
+    private var imageText: ImageTextIndexer?
     private var settingsTask: Task<Void, Never>?
     private var insertsSinceEnforce = 0
 
@@ -53,13 +54,19 @@ public final class ClipboardFeature: Feature {
         self.store = store
         self.monitor = monitor
         self.panel = panel
+        imageText = ImageTextIndexer(store: store) { message in logger.info("\(message, privacy: .public)") }
+        // 新复制的图片、升级前的旧图片都在后台识别文字（开关打开时，apply 里开始）
         apply(settings.load(ClipboardSettings.self))
         monitor.start()
         watchSettings()
         // 升级前保存的图片文件没有缩略图：原文件还在的补一份，旧记录也能看到预览
-        Task {
+        Task { [weak self] in
             if let count = try? await store.backfillFileThumbnails(), count > 0 {
                 logger.info("为 \(count) 个文件条目补了缩略图")
+                // 补了缩略图的图片文件也要识别文字
+                if settings.load(ClipboardSettings.self).searchImageText {
+                    self?.imageText?.start()
+                }
             }
         }
         try await store.enforce(limit: settings.load(ClipboardSettings.self).storageLimit.bytes)
@@ -72,6 +79,8 @@ public final class ClipboardFeature: Feature {
         settingsTask = nil
         monitor?.stop()
         monitor = nil
+        imageText?.stop()
+        imageText = nil
         panel?.tearDown()
         panel = nil
         store = nil
@@ -90,9 +99,13 @@ public final class ClipboardFeature: Feature {
         }
         let limit = context.settings.load(ClipboardSettings.self).storageLimit.bytes
         let logger = context.logger
-        Task {
+        let settings = context.settings
+        Task { [weak self] in
             do {
-                _ = try await store.insert(payload, source: source)
+                let item = try await store.insert(payload, source: source)
+                if item.kind == .image || item.hasThumbnail, settings.load(ClipboardSettings.self).searchImageText {
+                    self?.imageText?.start()
+                }
                 if enforce {
                     try await store.enforce(limit: limit)
                 }
@@ -118,5 +131,10 @@ public final class ClipboardFeature: Feature {
         monitor?.options = PasteboardMonitor.Options(
             recordRichText: settings.recordRichText, recordImages: settings.recordImages, recordFiles: settings.recordFiles,
         )
+        if settings.searchImageText {
+            imageText?.start()
+        } else {
+            imageText?.stop()
+        }
     }
 }

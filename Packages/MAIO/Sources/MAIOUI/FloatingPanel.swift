@@ -4,9 +4,19 @@ import SwiftUI
 /// 不抢焦点的浮动面板（HUD、剪贴板面板、切换器、启动器、翻译等共用）。
 /// 全部用 `nonactivatingPanel`：成为键盘窗口时不会把 MAIO 激活到前台，顶部菜单栏保持原来的 App
 /// （普通窗口一旦激活，macOS 会把菜单栏换成 MAIO 的「MAIO 编辑 窗口」）。需要打字的用 `acceptsKeyboard` 打开 `canBecomeKey`。
+///
+/// 焦点链：一个能输入的面板开着时又弹出另一个（例如在启动器里呼出剪贴板），前一个不关，
+/// 后一个用 `dismiss()` 关闭时把焦点还给前一个；焦点离开 MAIO（点了别的 App）时整条链都收到 `onFocusLost`。
 @MainActor
-public final class FloatingPanel<Content: View>: NSPanel {
+public final class FloatingPanel<Content: View>: NSPanel, FocusChainPanel {
     private let acceptsKeyboard: Bool
+    /// 弹出本面板时正在用的 MAIO 面板，关闭时把焦点还给它
+    weak var returnWindow: NSWindow?
+    /// 为了不被前一个面板挡住临时提高了层级时，原来的层级（离开焦点链时还原）
+    private var liftedFrom: NSWindow.Level?
+
+    /// 焦点离开了 MAIO（不是转到另一个 MAIO 面板）。控制器在这里按自己的规则决定关不关
+    public var onFocusLost: (() -> Void)?
 
     public init(rootView: Content, size: CGSize = CGSize(width: 320, height: 80), acceptsKeyboard: Bool = false) {
         self.acceptsKeyboard = acceptsKeyboard
@@ -68,6 +78,65 @@ public final class FloatingPanel<Content: View>: NSPanel {
         refreshShadow()
     }
 
+    /// 失去焦点后等这一轮事件处理完再看新的 key 窗口是谁（另一个面板的 makeKey 是同步的）
+    override public func resignKey() {
+        super.resignKey()
+        DispatchQueue.main.async { [weak self] in
+            self?.focusMoved()
+        }
+    }
+
+    private func focusMoved() {
+        // 已经关掉（正常关闭流程）或又拿回了焦点：不用管
+        guard isVisible, !isKeyWindow else { return }
+        if let next = NSApp.keyWindow as? FocusChainPanel, next !== self, next.isVisible {
+            if next.returnWindow == nil {
+                next.returnWindow = self
+                next.lift(to: level)
+            }
+            return
+        }
+        focusLeftApp()
+    }
+
+    /// 例如在启动器（popUpMenu）里呼出翻译（floating）：翻译要临时提到启动器的层级，否则被挡住
+    func lift(to target: NSWindow.Level) {
+        guard level < target else { return }
+        liftedFrom = level
+        level = target
+        orderFront(nil)
+    }
+
+    private func restoreLevel() {
+        if let liftedFrom {
+            level = liftedFrom
+        }
+        liftedFrom = nil
+    }
+
+    func focusLeftApp() {
+        let parent = returnWindow as? FocusChainPanel
+        returnWindow = nil
+        restoreLevel()
+        onFocusLost?()
+        if parent?.isVisible == true, parent?.isKeyWindow == false {
+            parent?.focusLeftApp()
+        }
+    }
+
+    /// 关闭面板。返回 true 表示焦点已经还给了弹出本面板时的那个 MAIO 面板，控制器不要再去激活原来的 App
+    @discardableResult
+    public func dismiss() -> Bool {
+        let parent = returnWindow
+        returnWindow = nil
+        let wasKey = isKeyWindow
+        orderOut(nil)
+        restoreLevel()
+        guard wasKey, let parent, parent.isVisible else { return false }
+        parent.makeKeyAndOrderFront(nil)
+        return true
+    }
+
     private func refreshShadow() {
         DispatchQueue.main.async { [weak self] in
             self?.invalidateShadow()
@@ -90,4 +159,12 @@ public final class FloatingPanel<Content: View>: NSPanel {
             y: frame.minY + (frame.height - size.height) * relativeY,
         ))
     }
+}
+
+/// 焦点链上的面板（`FloatingPanel` 是泛型，用协议来认出别的面板）
+@MainActor
+protocol FocusChainPanel: NSWindow {
+    var returnWindow: NSWindow? { get set }
+    func lift(to target: NSWindow.Level)
+    func focusLeftApp()
 }

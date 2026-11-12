@@ -48,6 +48,9 @@ struct ClipboardSettingsView: View {
             Toggle(isOn: $value.recordFiles) {
                 LabelWithInfo("记录复制的文件", info: ClipboardHelp.files)
             }
+            Toggle(isOn: $value.searchImageText) {
+                LabelWithInfo("搜索图片里的文字", info: ClipboardHelp.imageText)
+            }
             Picker(selection: $value.storageLimit) {
                 ForEach(StorageLimit.allCases, id: \.self) { Text($0.title).tag($0) }
             } label: {
@@ -75,5 +78,10 @@ enum ClipboardHelp {
     static let pasteDirectly = "打开：回车后自动切回原来的 App 并粘贴。关闭：只把内容放到剪贴板，需要自己按 ⌘V。"
     static let moveToTop = "打开后，粘贴过的条目会排到第一条，下次按 ⌃V 默认选中它。关闭则按复制时间排序。"
     static let files = "只记录文件路径，不复制文件本身，不占空间。原文件被删除或移动后就无法粘贴了。"
+    static let imageText = """
+    打开后，复制的图片（包括复制的图片文件）会在后台用系统自带的文字识别（离线）识别一次，搜索时也能搜到图片里的字，命中的那段显示在缩略图旁边。
+
+    以前的图片也会在后台慢慢补上（原图片文件已经被删的补不了）。关闭后不再识别，搜索也不搜图片里的字。
+    """
     static let limit = "所有历史（不含固定的条目）超过上限时，自动删除最久没用过的。选“永久保留”则不自动删除，可以在下方手动清理。"
 }

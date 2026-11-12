@@ -104,11 +104,20 @@ struct ShortcutsPane: View {
 private struct BindingRow: View {
     let controller: MAIOAppController
     let binding: CommandBinding
+    /// 开关用自己的状态，不用 `Binding(get:set:)` 闭包：2026-11-12 在这个闭包里崩过一次
+    /// （设置窗口重新排版时调用了已经失效的闭包，EXC_BAD_ACCESS，见 PROGRESS"已知问题"）
+    @State private var isOn: Bool
+
+    init(controller: MAIOAppController, binding: CommandBinding) {
+        self.controller = controller
+        self.binding = binding
+        _isOn = State(initialValue: binding.isEnabled)
+    }
 
     var body: some View {
         let presentation = BindingPresentation(binding: binding, catalog: controller.commandCatalog)
         HStack(spacing: 12) {
-            Toggle("", isOn: enabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
+            Toggle("", isOn: $isOn).labelsHidden().toggleStyle(.switch).controlSize(.small)
             KeyChordLabel(text: binding.trigger.displayString).frame(minWidth: 70, alignment: .leading)
             presentation.icon
             VStack(alignment: .leading, spacing: 2) {
@@ -119,6 +128,14 @@ private struct BindingRow: View {
             BindingStatus(controller: controller, binding: binding)
         }
         .opacity(binding.isEnabled ? 1 : 0.5)
+        .onChange(of: isOn) { _, value in
+            guard value != binding.isEnabled else { return }
+            var copy = binding
+            copy.isEnabled = value
+            controller.runtime.bindings.upsert(copy)
+        }
+        // 别处（功能页、编辑框）改了启停时同步过来
+        .onChange(of: binding.isEnabled) { _, value in isOn = value }
     }
 
     /// 第二行：MAIO 功能显示"功能名 · 命令名"，其他显示参数
@@ -132,16 +149,5 @@ private struct BindingRow: View {
                 value.stringValue ?? value.boolValue.map { $0 ? "是" : "否" } ?? value.numberValue.map { "\($0)" }
             }
         return ([presentation.descriptor?.title ?? binding.command.rawValue] + arguments).joined(separator: "  ")
-    }
-
-    private var enabled: SwiftUI.Binding<Bool> {
-        SwiftUI.Binding(
-            get: { binding.isEnabled },
-            set: { value in
-                var copy = binding
-                copy.isEnabled = value
-                controller.runtime.bindings.upsert(copy)
-            },
-        )
     }
 }

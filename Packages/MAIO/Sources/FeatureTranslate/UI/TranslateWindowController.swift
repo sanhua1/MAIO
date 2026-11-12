@@ -83,8 +83,7 @@ final class TranslateWindowController {
             updated.rememberedOrigin = [topLeft.x, topLeft.y]
             saveSettings(updated)
         }
-        panel.orderOut(nil)
-        if NSApp.isActive, let previousApp, !previousApp.isTerminated {
+        if !panel.dismiss(), NSApp.isActive, let previousApp, !previousApp.isTerminated {
             previousApp.activate()
         }
         previousApp = nil
@@ -107,8 +106,9 @@ final class TranslateWindowController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         // ⌘W 和点关闭按钮一样
         panel.onCloseCommand = { [weak self] in self?.close() }
+        // 焦点转到另一个 MAIO 面板（例如在翻译里呼出剪贴板）时不算失焦，见 FloatingPanel 的焦点链
+        panel.onFocusLost = { [weak self] in self?.didResignKey() }
         let delegate = PanelDelegate(
-            resignedKey: { [weak self] in self?.didResignKey() },
             moved: { [weak self] in self?.didMove() },
             resized: { [weak self] in self?.didResize() },
         )
@@ -224,21 +224,15 @@ final class TranslateWindowController {
     }
 }
 
-/// 把窗口事件转给控制器（失去焦点、移动、改变大小）。
+/// 把窗口事件转给控制器（移动、改变大小）。
 @MainActor
 private final class PanelDelegate: NSObject, NSWindowDelegate {
-    private let resignedKey: () -> Void
     private let moved: () -> Void
     private let resized: () -> Void
 
-    init(resignedKey: @escaping () -> Void, moved: @escaping () -> Void, resized: @escaping () -> Void) {
-        self.resignedKey = resignedKey
+    init(moved: @escaping () -> Void, resized: @escaping () -> Void) {
         self.moved = moved
         self.resized = resized
-    }
-
-    func windowDidResignKey(_: Notification) {
-        resignedKey()
     }
 
     func windowDidMove(_: Notification) {

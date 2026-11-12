@@ -3,15 +3,6 @@ import MAIOKit
 
 /// 录屏（ADR-0024）：截图框选好区域后开始；录完保存到录屏文件夹，并把文件复制到剪贴板。
 extension ScreenshotController {
-    /// 「录屏」命令：没在录就进入框选，录制前 / 录制中再按一次就开始 / 结束
-    func toggleRecording() async {
-        if let recording {
-            await recording.toggle()
-            return
-        }
-        await capture(primaryAction: .record)
-    }
-
     func beginRecording(from result: CaptureResult) {
         guard recording == nil else {
             context.overlay.showError("正在录屏，先结束当前的录制")

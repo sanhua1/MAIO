@@ -32,16 +32,32 @@ struct ClipRowView: View {
     @ViewBuilder private var content: some View {
         switch item.kind {
         case .image:
-            thumbnail(fallback: "图片")
+            withImageText(thumbnail(fallback: "图片"))
         case .files:
             if item.hasThumbnail {
                 // 复制的图片文件：显示缩略图，文件名等缩略图加载好之前当占位
-                thumbnail(fallback: item.summary)
+                withImageText(thumbnail(fallback: item.summary))
             } else {
                 Label(item.summary, systemImage: "doc").lineLimit(1).truncationMode(.middle)
             }
         case .text, .richText:
             Text(item.summary).lineLimit(1).truncationMode(.tail)
+        }
+    }
+
+    /// 搜索命中图片里的文字时，在缩略图右边显示命中处附近的一段
+    @ViewBuilder private func withImageText(_ thumbnail: some View) -> some View {
+        if let text = item.textInImage {
+            HStack(spacing: 8) {
+                thumbnail
+                Label(text, systemImage: "text.viewfinder")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .help("图片里的文字")
+            }
+        } else {
+            thumbnail
         }
     }
 

@@ -49,6 +49,16 @@ struct LauncherPanelView: View {
             hint("⇥", "切换来源")
             Spacer()
             hint("Esc", "关闭")
+            Button {
+                model.onOpenSettings?()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .help("MAIO 设置")
         }
         .font(.caption)
         .foregroundStyle(.secondary)

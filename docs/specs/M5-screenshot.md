@@ -46,7 +46,7 @@
 | `screenshot.history` | 无 | 打开截图历史 |
 | `screenshot.pinLast` | 无 | 重新贴最近一张截图 |
 | `screenshot.fullScreen` / `screenshot.window` | 无 | 全屏截图 / 当前窗口截图，直接复制并写入历史 |
-| `screenshot.ocr` / `screenshot.translate` / `screenshot.scrolling` | 无 | 先框选，再直接做 OCR / 翻译 / 长截图 |
+| ~~`screenshot.ocr` / `screenshot.translate` / `screenshot.scrolling`~~ | 无 | 2026-11-12 删除：都从框选后的工具栏进入 |
 
 > ⚠️ ⌥F1 依赖系统设置"将 F1、F2 等键用作标准功能键"（`defaults read -g com.apple.keyboard.fnState` 为 1，用户当前是 1）。
 > 如果关掉这个选项，F1 会变成亮度键，发出的是 NX_SYSDEFINED 事件而不是 keyDown，⌥F1 将无法触发。

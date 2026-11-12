@@ -93,15 +93,6 @@ final class RecordingSession {
         }
     }
 
-    /// 「录屏」命令再触发一次：还没开始就开始，录制中就结束
-    func toggle() async {
-        switch model.phase {
-        case .setup: await begin()
-        case .recording: await stop()
-        case .saving: break
-        }
-    }
-
     // MARK: 开始
 
     private func begin() async {

@@ -53,6 +53,10 @@ struct CaptureResult: @unchecked Sendable {
 /// 一次截图的结果
 enum CaptureOutcome {
     case cancelled
+    /// 截图时按 F2：退出截图并打开截图历史（不切回原来的 App）
+    case openHistory
+    /// 截图时按 F1：整个屏幕复制（和普通复制一样，另外提示"已复制全屏截图"）
+    case fullScreen(CaptureResult)
     /// 复制颜色值
     case color(String)
     case image(CaptureResult, CaptureAction)
@@ -67,13 +71,12 @@ final class CaptureSession: OverlayEventHandler {
         var alwaysDetectControls: Bool
         var showMagnifier: Bool
         var colorFormat: ColorFormat
-        /// ⏎、双击选区、✓ 做什么：普通截图是复制，"截图识别文字 / 截图翻译"命令是识别 / 翻译
-        var primaryAction = CaptureAction.copy
     }
 
     struct ElementRequest {
         var point: CGPoint
         var pid: Int32
+        var windowID: UInt32
         var clip: CGRect
     }
 
@@ -136,13 +139,6 @@ final class CaptureSession: OverlayEventHandler {
         toolbarModel.perform = { [weak self] command in self?.perform(command) }
         toolbarModel.hintChanged = { [weak self] hint in self?.toolbarHoverChanged(hint) }
         toolbarModel.capturesScreen = edit == nil
-        toolbarModel.confirmHelp = switch options.primaryAction {
-        case .ocr: "识别文字（⏎）"
-        case .translate: "翻译（⏎）"
-        case .scrolling: "开始长截图（⏎）"
-        case .record: "录屏（⏎）"
-        default: "复制（⏎）"
-        }
         colorPanel.onChange = { [weak self] color in self?.perform(.color(color)) }
         textField.onChange = { [weak self] in self?.render() }
         textField.onCommit = { [weak self] in

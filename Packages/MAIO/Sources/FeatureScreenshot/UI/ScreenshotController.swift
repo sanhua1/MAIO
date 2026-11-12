@@ -67,15 +67,13 @@ final class ScreenshotController {
 
     // MARK: 区域截图
 
-    /// primaryAction：⏎ 做什么（"截图识别文字""截图翻译"命令改成识别 / 翻译）
-    func capture(primaryAction: CaptureAction = .copy) async {
-        await startSession(primaryAction: primaryAction, edit: nil)
+    /// 识别文字、翻译、长截图、录屏都从框选后的工具栏进入，不单独做命令
+    func capture() async {
+        await startSession(edit: nil)
     }
 
     /// 冻结屏幕并开始交互。edit 不为 nil 时是重新编辑
-    func startSession(
-        primaryAction: CaptureAction = .copy, edit: (@MainActor ([FrozenDisplay]) -> EditContext?)?,
-    ) async {
+    func startSession(edit: (@MainActor ([FrozenDisplay]) -> EditContext?)?) async {
         // 录屏开始前的控制条接管着键盘，这时不能再开截图
         guard session == nil, scrollCapture == nil, recording?.isSettingUp != true, !isStarting, ensurePermission()
         else { return }
@@ -85,7 +83,8 @@ final class ScreenshotController {
         previousApp = Self.frontmostOtherApp()
         let displays = DisplayInfo.all()
         let windows = WindowPicker.candidates(
-            WindowSnapshot.current(), excludingPID: getpid(), displays: displays.map(\.bounds),
+            WindowSnapshot.current(), ownPID: getpid(), excludedIDs: Self.passThroughWindowIDs(),
+            displays: displays.map(\.bounds),
         )
         let frozen: [FrozenDisplay]
         do {
@@ -106,7 +105,6 @@ final class ScreenshotController {
                 alwaysDetectControls: settings.alwaysDetectControls,
                 showMagnifier: settings.showMagnifier,
                 colorFormat: settings.colorFormat,
-                primaryAction: primaryAction,
             ),
             toolStyle: settings.toolStyle,
             edit: edit?(frozen),
@@ -125,6 +123,12 @@ final class ScreenshotController {
     // MARK: 输出
 
     private func complete(_ outcome: CaptureOutcome) {
+        // F1 整屏：照普通复制处理，再提示一下（框选时没有选区变化，不提示的话看不出截好了）
+        if case let .fullScreen(result) = outcome {
+            complete(.image(result, .copy))
+            context.overlay.showHUD("已复制全屏截图", symbol: "camera.viewfinder")
+            return
+        }
         session = nil
         let previous = previousApp
         previousApp = nil
@@ -134,6 +138,10 @@ final class ScreenshotController {
         case .cancelled:
             editing?.pin?.orderFrontRegardless()
             previous?.activate()
+        case .openHistory:
+            showHistory()
+        case .fullScreen:
+            break // 已在函数开头处理
         case let .color(text):
             ImageExporter.copyToPasteboard(text: text)
             previous?.activate()
@@ -320,5 +328,12 @@ struct EncodedCapture: Sendable {
         self.original = original
         rendered = result.rendered.flatMap(ImageExporter.pngData)
         annotations = result.annotations.isEmpty ? nil : try? JSONEncoder().encode(result.annotations)
+    }
+}
+
+extension ScreenshotController {
+    /// MAIO 自己不接收鼠标的窗口（HUD、录屏边框、提示条）：截图时不当成窗口识别
+    static func passThroughWindowIDs() -> Set<UInt32> {
+        Set(NSApp.windows.filter { $0.isVisible && $0.ignoresMouseEvents }.map { UInt32($0.windowNumber) })
     }
 }

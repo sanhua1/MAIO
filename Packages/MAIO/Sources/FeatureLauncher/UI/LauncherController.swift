@@ -16,7 +16,6 @@ final class LauncherController {
     private let perform: @MainActor (String) async throws -> Void
     private let showError: (String) -> Void
     private var panel: FloatingPanel<LauncherPanelView>?
-    private var delegate: LauncherPanelDelegate?
     private var previousApp: NSRunningApplication?
     private var keyMonitor: Any?
     private var closedAt: Date?
@@ -35,6 +34,7 @@ final class LauncherController {
         self.showError = showError
         model.onOpen = { [weak self] item, reveal in self?.open(item, reveal: reveal) }
         model.onClose = { [weak self] in self?.close(restoreFocus: true) }
+        model.onOpenSettings = { [weak self] in self?.openSettings() }
     }
 
     var isVisible: Bool {
@@ -71,8 +71,8 @@ final class LauncherController {
         removeKeyMonitor()
         guard let panel, panel.isVisible else { return }
         closedAt = Date()
-        panel.orderOut(nil)
-        if restoreFocus, NSApp.isActive, let previousApp, !previousApp.isTerminated {
+        let handedBack = panel.dismiss()
+        if restoreFocus, !handedBack, NSApp.isActive, let previousApp, !previousApp.isTerminated {
             previousApp.activate()
         }
     }
@@ -80,9 +80,7 @@ final class LauncherController {
     func tearDown() {
         removeKeyMonitor()
         panel?.orderOut(nil)
-        panel?.delegate = nil
         panel = nil
-        delegate = nil
     }
 
     /// 命令类：先关面板、把焦点还给原来的 App，稍等再执行（"在 Finder 当前位置……""窗口截图"要看最前面的 App）
@@ -123,14 +121,28 @@ final class LauncherController {
         }
     }
 
+    /// 齿轮：先关面板，再打开 MAIO 设置（核心命令 maio.openSettings）
+    private func openSettings() {
+        close(restoreFocus: true)
+        let perform = perform
+        let showError = showError
+        Task {
+            try? await Task.sleep(for: Self.commandDelay)
+            do {
+                try await perform("maio.openSettings")
+            } catch {
+                showError("打不开 MAIO 设置：\(error.localizedDescription)")
+            }
+        }
+    }
+
     private func makePanel() -> FloatingPanel<LauncherPanelView> {
         let panel = FloatingPanel(rootView: LauncherPanelView(model: model), size: LauncherPanelView.size, acceptsKeyboard: true)
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.onCloseCommand = { [weak self] in self?.close(restoreFocus: true) }
-        let delegate = LauncherPanelDelegate { [weak self] in self?.close(restoreFocus: false) }
-        panel.delegate = delegate
-        self.delegate = delegate
+        // 点了别处时关闭（转到另一个 MAIO 面板时不关，见 FloatingPanel 的焦点链）
+        panel.onFocusLost = { [weak self] in self?.close(restoreFocus: false) }
         self.panel = panel
         return panel
     }
@@ -229,19 +241,5 @@ private extension LauncherController {
         guard let item = model.selected, LauncherActions.copy(item, asFile: asFile) else { return false }
         NSSound(named: "Pop")?.play()
         return true
-    }
-}
-
-/// 面板失去焦点（点了别处）时关闭
-@MainActor
-private final class LauncherPanelDelegate: NSObject, NSWindowDelegate {
-    private let resignedKey: () -> Void
-
-    init(resignedKey: @escaping () -> Void) {
-        self.resignedKey = resignedKey
-    }
-
-    func windowDidResignKey(_: Notification) {
-        resignedKey()
     }
 }

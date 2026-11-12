@@ -38,6 +38,11 @@ enum Thumbnails {
         thumbnail(from: source, maxPixelSize: maxPixelSize).flatMap(png)
     }
 
+    /// 从已经打开的图片数据解码，缩小到 maxPixelSize（识别文字用）
+    static func image(from source: CGImageSource, maxPixelSize: Int) -> CGImage? {
+        thumbnail(from: source, maxPixelSize: maxPixelSize)
+    }
+
     private static func thumbnail(from source: CGImageSource, maxPixelSize: Int) -> CGImage? {
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,

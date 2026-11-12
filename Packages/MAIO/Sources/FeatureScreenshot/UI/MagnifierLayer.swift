@@ -8,6 +8,8 @@ final class MagnifierLayer: CALayer {
         var pixelX: Int
         var pixelY: Int
         var lines: [String]
+        /// 最下面的按键提示（整行宽度，不和色块对齐）
+        var hints: [String] = []
         var color: CGColor?
     }
 
@@ -18,12 +20,15 @@ final class MagnifierLayer: CALayer {
     }
 
     static let infoHeight: CGFloat = 54
+    /// 按键提示区的高度（两行）
+    static let hintHeight: CGFloat = 30
     static var size: CGSize {
-        CGSize(width: zoomSide, height: zoomSide + infoHeight)
+        CGSize(width: zoomSide, height: zoomSide + infoHeight + hintHeight)
     }
 
     private let zoom = ZoomLayer()
     private let info = CATextLayer()
+    private let hint = CATextLayer()
     private let swatch = CALayer()
 
     var image: CGImage? {
@@ -33,6 +38,7 @@ final class MagnifierLayer: CALayer {
     var textScale: CGFloat = 2 {
         didSet {
             info.contentsScale = textScale
+            hint.contentsScale = textScale
             zoom.contentsScale = textScale
         }
     }
@@ -46,6 +52,10 @@ final class MagnifierLayer: CALayer {
             info.string = NSAttributedString(string: state.lines.joined(separator: "\n"), attributes: [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
                 .foregroundColor: NSColor.white,
+            ])
+            hint.string = NSAttributedString(string: state.hints.joined(separator: "\n"), attributes: [
+                .font: NSFont.systemFont(ofSize: 10),
+                .foregroundColor: NSColor.white.withAlphaComponent(0.75),
             ])
             swatch.backgroundColor = state.color
         }
@@ -62,7 +72,8 @@ final class MagnifierLayer: CALayer {
         swatch.borderColor = NSColor.white.cgColor
         swatch.borderWidth = 1
         info.isWrapped = true
-        for sublayer in [zoom, swatch, info] {
+        hint.isWrapped = true
+        for sublayer in [zoom, swatch, info, hint] {
             addSublayer(sublayer)
         }
     }
@@ -81,8 +92,11 @@ final class MagnifierLayer: CALayer {
         let side = Self.zoomSide
         // 图层坐标左下角原点：放大区域在上，文字在下
         zoom.frame = CGRect(x: 0, y: bounds.height - side, width: side, height: side)
-        swatch.frame = CGRect(x: 6, y: Self.infoHeight - 20, width: 12, height: 12)
-        info.frame = CGRect(x: 24, y: 4, width: bounds.width - 28, height: Self.infoHeight - 8)
+        // 从下往上：按键提示 → 坐标和颜色 → 放大区域
+        let hintTop = Self.hintHeight
+        swatch.frame = CGRect(x: 6, y: hintTop + Self.infoHeight - 20, width: 12, height: 12)
+        info.frame = CGRect(x: 24, y: hintTop + 2, width: bounds.width - 28, height: Self.infoHeight - 6)
+        hint.frame = CGRect(x: 6, y: 2, width: bounds.width - 8, height: Self.hintHeight - 2)
     }
 }
 
