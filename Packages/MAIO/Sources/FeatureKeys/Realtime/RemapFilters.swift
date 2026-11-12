@@ -32,6 +32,11 @@ final class KeyRemapFilter: RealtimeKeyFilter {
         state.withLock { $0.config = config }
     }
 
+    /// Caps+W 在用户看来就是 ↑，窗口切换等会话里也要当 ↑ 用（ADR-0025）
+    var appliesDuringKeyboardSessions: Bool {
+        true
+    }
+
     func process(_ event: KeyEvent, _: RealtimeEnvironment) -> KeyFilterDecision {
         let result = state.withLock { value in
             let held = value.config.caps?.isHeld ?? false

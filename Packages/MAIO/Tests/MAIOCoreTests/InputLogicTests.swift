@@ -181,6 +181,35 @@ struct KeyFilterRoutingTests {
         router.hasSession = true
         #expect(router.route(key("a")) == .init(consume: true, effect: .toSession(key("a"))))
     }
+
+    @Test func `session filters hand remapped keys to the session`() {
+        var router = KeyboardRouter()
+        router.filters = [KeyFilterEntry(token: FilterToken(rawValue: 1), filter: SessionKeyFilter())]
+        router.hasSession = true
+        // ⌥ 按着（例如 ⌥Tab 切换窗口中），w 改成 ↑，修饰键保留
+        #expect(router.route(key("opt+w")) == .init(consume: true, effect: .toSession(key("opt+up"))))
+        #expect(router.route(key("opt+w", .up)) == .init(consume: true, effect: .toSession(key("opt+up", .up))))
+        #expect(router.route(key("opt+q")) == .swallow)
+        #expect(router.route(key("opt+e")) == .init(consume: true, effect: .toSession(key("opt+e"))))
+    }
+}
+
+/// 选择在会话里生效的过滤器（ADR-0025）：w 改成 ↑（叠加原修饰键），吞掉 q
+private struct SessionKeyFilter: RealtimeKeyFilter {
+    var appliesDuringKeyboardSessions: Bool {
+        true
+    }
+
+    func process(_ event: KeyEvent, _: RealtimeEnvironment) -> KeyFilterDecision {
+        switch event.keyCode {
+        case KeyChord(string: "w")?.keyCode: .replace(KeyChord(
+                keyCode: KeyChord(string: "up")!.keyCode,
+                modifiers: event.modifiers,
+            ))
+        case KeyChord(string: "q")?.keyCode: .consume
+        default: .pass
+        }
+    }
 }
 
 private final class FlagsRecorder: RealtimeKeyFilter, @unchecked Sendable {

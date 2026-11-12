@@ -26,6 +26,14 @@ public enum FilterStage: Int, Sendable, Comparable, CaseIterable {
 /// 位置在键盘会话、快捷键录制之后，快捷键匹配之前。约束同 `RealtimeInputFilter`。
 public protocol RealtimeKeyFilter: Sendable {
     func process(_ event: KeyEvent, _ environment: RealtimeEnvironment) -> KeyFilterDecision
+    /// 键盘会话（窗口切换、截图等）期间是否也生效（ADR-0025）。生效时 `replace` 的键交给会话而不是发给系统。
+    var appliesDuringKeyboardSessions: Bool { get }
+}
+
+public extension RealtimeKeyFilter {
+    var appliesDuringKeyboardSessions: Bool {
+        false
+    }
 }
 
 public enum KeyFilterDecision: Sendable, Hashable {
