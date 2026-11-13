@@ -17,13 +17,14 @@ import MAIOKit
 enum FeatureCatalog {
     static let all: [any Feature.Type] = [
         SystemActionsFeature.self,
-        ScrollFeature.self,
-        SwitcherFeature.self,
-        TranslateFeature.self,
-        ClipboardFeature.self,
-        ScreenshotFeature.self,
-        FinderFeature.self,
         LauncherFeature.self,
+        SwitcherFeature.self,
+        ScrollFeature.self,
+        ClipboardFeature.self,
+        TranslateFeature.self,
+        ScreenshotFeature.self,
+        // Finder 增强和按键映射都注册按键过滤器，过滤器按启动顺序串联：保持 Finder 在按键映射之前
+        FinderFeature.self,
         KeysFeature.self,
         // @new-feature-catalog
     ]

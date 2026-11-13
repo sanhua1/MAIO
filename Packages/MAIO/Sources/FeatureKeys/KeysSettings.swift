@@ -5,7 +5,7 @@ import MAIOKit
 struct KeysSettings: FeatureSettings {
     static let defaultValue = KeysSettings()
 
-    /// Caps 分层（全局）：打开后 Caps 原本的功能完全没有，单按什么都不发生
+    /// Super Caps（全局 Caps 分层）：打开后 Caps 原本的功能完全没有，单按什么都不发生
     var capsLayerEnabled = true
     var layer: [LayerEntry] = LayerEntry.defaults
     /// 全局改键（对所有键盘）

@@ -2,18 +2,18 @@ import MAIOKit
 import MAIOUI
 import SwiftUI
 
-/// 按键管理的设置：键盘（设备级修饰键）、Caps 分层（全局）、其他改键（全局键盘改键、鼠标按键）。
+/// 按键映射的设置：Super Caps（全局 Caps 分层）、键盘重映射（设备级修饰键）、其他改键（全局键盘改键、鼠标按键）。
 struct KeysSettingsView: View {
     enum Page: String, CaseIterable {
-        case keyboards = "键盘"
-        case capsLayer = "Caps 分层"
+        case capsLayer = "Super Caps"
+        case keyboards = "键盘重映射"
         case remaps = "其他改键"
     }
 
     let context: any FeatureContext
     /// 功能没在运行时为 nil
     let remaps: RemapController?
-    @State private var page = Page.keyboards
+    @State private var page = Page.capsLayer
 
     var body: some View {
         Picker("页面", selection: $page) {
@@ -35,10 +35,15 @@ struct KeyboardsPage: View {
 
     var body: some View {
         Group {
+            PageIntro(
+                symbol: "keyboard",
+                title: "键盘重映射",
+                text: "为每个键盘单独调换修饰键。例如外接 Windows 键盘时，把 Alt / Win 换成和 Mac 一样的 ⌥ / ⌘ 位置。",
+            )
             if model.karabinerRunning {
                 Section {
                     Label(
-                        "Karabiner 正在运行：它会接管键盘，这里的改动对实体键盘不起作用。请先退出 Karabiner。",
+                        "Karabiner 正在运行，它会接管键盘，这里的改动对实体键盘不起作用。请先退出 Karabiner。",
                         systemImage: "exclamationmark.triangle.fill",
                     )
                     .foregroundStyle(.orange)
@@ -57,7 +62,10 @@ struct KeyboardsPage: View {
             } header: {
                 Text("键盘")
             } footer: {
-                Text("只列出接着的键盘。没接着的键盘的设置仍然保存在系统里，接上后生效。")
+                NoteLines(
+                    "只列出当前连接的键盘，每个键盘的设置分开保存。",
+                    "未连接的键盘设置仍保存在系统里，接上后自动生效。",
+                )
             }
             if model.selection != nil {
                 modifierSection
@@ -84,7 +92,11 @@ struct KeyboardsPage: View {
         } header: {
             Text("修饰键")
         } footer: {
-            Text("改动立即生效，和系统设置「键盘 › 键盘快捷键… › 修饰键」是同一份设置，退出 MAIO 后仍然有效。系统设置开着时，要重新打开那个窗口才能看到变化。")
+            NoteLines(
+                "改动立即生效，退出 MAIO 后依然有效。",
+                "与系统设置「键盘 › 键盘快捷键… › 修饰键」是同一份设置。",
+                "系统设置的窗口开着时，需要重新打开才能看到变化。",
+            )
         }
     }
 }

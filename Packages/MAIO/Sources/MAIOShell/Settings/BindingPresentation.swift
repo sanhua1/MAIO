@@ -134,7 +134,7 @@ struct BindingIcon: View {
     }
 }
 
-/// 绑定的状态徽标：不可用 / 冲突 / 覆盖系统快捷键（快捷键页和功能页共用）
+/// 绑定的状态徽标：不可用 / 冲突 / 接管系统快捷键（「MAIO 快捷键」页和功能页共用）
 struct BindingStatus: View {
     let controller: MAIOAppController
     let binding: CommandBinding
@@ -150,10 +150,10 @@ struct BindingStatus: View {
             Button {
                 controller.showSettings(pane: .systemShortcuts)
             } label: {
-                StatusBadge("覆盖系统快捷键", tone: .neutral)
+                StatusBadge("接管系统快捷键", tone: .neutral)
             }
             .buttonStyle(.plain)
-            .help("这个组合原本是系统快捷键「\(system.info.name)」，MAIO 运行时由 MAIO 接管。点击查看")
+            .help("这个组合原本是系统快捷键「\(system.info.name)」。MAIO 运行时只触发 MAIO，退出 MAIO 后系统快捷键恢复工作。点击查看")
         }
     }
 }

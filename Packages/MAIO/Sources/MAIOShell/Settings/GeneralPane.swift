@@ -10,6 +10,7 @@ struct GeneralPane: View {
 
     var body: some View {
         Form {
+            PermissionsSection(controller: controller)
             Section("启动") {
                 Toggle("登录时启动 MAIO", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in setLaunchAtLogin(enabled) }

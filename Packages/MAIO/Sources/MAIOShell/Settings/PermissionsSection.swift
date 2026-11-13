@@ -2,25 +2,24 @@ import MAIOKit
 import MAIOUI
 import SwiftUI
 
-struct PermissionsPane: View {
+/// 「通用」页里的权限区：每项权限的状态、用途和授权按钮。
+struct PermissionsSection: View {
     let controller: MAIOAppController
     /// 系统不会通知权限变化，页面可见期间每秒刷新一次
     @State private var tick = 0
 
     var body: some View {
-        Form {
-            Section {
-                ForEach(Permission.allCases) { permission in
-                    row(permission)
-                }
-            } footer: {
-                Text("授权后如果状态没有变化，请在系统设置中把 MAIO 关掉再打开，或重启 MAIO。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        Section {
+            ForEach(Permission.allCases) { permission in
+                row(permission)
             }
+        } header: {
+            Text("权限")
+        } footer: {
+            Text("授权后如果状态没有变化，请在系统设置中把 MAIO 关掉再打开，或重启 MAIO。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .formStyle(.grouped)
-        .navigationTitle("权限")
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))

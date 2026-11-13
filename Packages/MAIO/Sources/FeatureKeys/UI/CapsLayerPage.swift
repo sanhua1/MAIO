@@ -2,7 +2,7 @@ import MAIOKit
 import MAIOUI
 import SwiftUI
 
-/// Caps 分层（全局）：总开关、状态、层里的映射（每个键发出一个键 / 组合键，或执行一个 MAIO 命令）。
+/// Super Caps（全局 Caps 分层）：总开关、状态、层里的映射（每个键发出一个键 / 组合键，或执行一个 MAIO 命令）。
 struct CapsLayerPage: View {
     let context: any FeatureContext
     let controller: RemapController?
@@ -19,13 +19,23 @@ struct CapsLayerPage: View {
 
     var body: some View {
         Group {
+            PageIntro(
+                symbol: "capslock",
+                title: "Super Caps",
+                text: "把很少用的 Caps Lock 变成功能键：按住它，键盘上的键临时变成第二套功能，手不用离开主键区就能移动光标、翻页、执行命令。",
+            )
             Section {
-                Toggle("打开 Caps 分层", isOn: $value.capsLayerEnabled)
+                Toggle("开启 Super Caps", isOn: $value.capsLayerEnabled)
                 if let controller, value.capsLayerEnabled {
                     LabeledContent("状态") { statusBadge(controller.capsStatus) }
                 }
             } footer: {
-                Text("对所有键盘生效。打开后 Caps 原本的功能完全没有：不切换大写、不亮灯，单按什么都不发生；按住 Caps 时用下面这一层。层里按 ⇧⌃⌥⌘ 会叠加到输出上（Caps+⇧+S = ⇧↓）。没设置的键照常输出。")
+                NoteLines(
+                    "对所有键盘生效。",
+                    "开启后 Caps Lock 不再切换大小写、不亮灯，单独按下没有任何反应。",
+                    "按住 Caps 再按其他键，执行下方「层里的键」设置的动作；没设置的键照常输出。",
+                    "可以同时按住 ⇧ ⌃ ⌥ ⌘，它们会叠加到输出上：例如 Caps + ⇧ + S 等于 ⇧↓（向下选择）。",
+                )
             }
             Section {
                 ForEach(value.layer.indices, id: \.self) { index in
@@ -45,7 +55,11 @@ struct CapsLayerPage: View {
             } header: {
                 Text("层里的键")
             } footer: {
-                Text("点左边的键可以换成别的键；点右边录制要发出的键或组合键，或者改成执行 MAIO 命令。")
+                NoteLines(
+                    "左侧是按住 Caps 时要按的键，点一下可以换成别的键。",
+                    "右侧是要发出的按键或组合键，点一下重新录制，也可以改成执行一个 MAIO 命令。",
+                    "同一个键只能设置一次，重复的行不生效。",
+                )
             }
         }
         .onChange(of: value) { _, newValue in context.settings.save(newValue) }

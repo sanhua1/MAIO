@@ -1,6 +1,6 @@
 import MAIOKit
 
-/// 窗口切换设置。触发键不在这里：在「快捷键」页把任意组合键绑定到 `switcher.show`（默认 ⌥⇥）。
+/// 窗口切换设置。触发键不在这里：在「MAIO 快捷键」页把任意组合键绑定到 `switcher.show`（默认 ⌥⇥）。
 /// 字段只增不删；结构不兼容的修改要提升 schemaVersion 并实现 migrate。
 struct SwitcherSettings: FeatureSettings {
     static let defaultValue = SwitcherSettings()

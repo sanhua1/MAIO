@@ -52,7 +52,7 @@ struct FeaturePane: View {
         case let .needsPermission(missing):
             HStack {
                 StatusBadge("缺少权限：" + missing.map(\.displayName).sorted().joined(separator: "、"), tone: .warning)
-                Button("前往授权") { controller.showSettings(pane: .permissions) }
+                Button("前往授权") { controller.showSettings(pane: .general) }
             }
         case let .failed(message): StatusBadge("启动失败：\(message)", tone: .negative)
         }

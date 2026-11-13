@@ -69,7 +69,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openPermissions() {
-        controller?.showSettings(pane: .permissions)
+        controller?.showSettings(pane: .general)
     }
 
     @objc private func quit() {

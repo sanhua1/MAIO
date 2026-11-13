@@ -41,7 +41,7 @@ struct BindingEditor: View {
                     }
                     ForEach(systemConflicts) { shortcut in
                         Label(
-                            "覆盖系统快捷键「\(shortcut.info.name)」（\(shortcut.displayString)）：MAIO 运行时由 MAIO 接管",
+                            "与系统快捷键「\(shortcut.info.name)」（\(shortcut.displayString)）相同：MAIO 运行时由 MAIO 接管",
                             systemImage: "globe",
                         )
                         .foregroundStyle(.orange)
@@ -81,9 +81,9 @@ struct BindingEditor: View {
             Button("保存", action: save).keyboardShortcut(.defaultAction)
         }
         .padding()
-        .alert("覆盖系统快捷键", isPresented: isConfirmingSystemConflict) {
+        .alert("与系统快捷键相同", isPresented: isConfirmingSystemConflict) {
             Button("保存（MAIO 运行时接管）") { commit() }
-            Button("保存并禁用系统快捷键") {
+            Button("保存，并在系统中禁用") {
                 controller.runtime.systemShortcuts.disable(
                     pendingSystemConflicts.map(\.id), reason: controller.reason(for: result),
                 )
@@ -128,9 +128,9 @@ struct BindingEditor: View {
     private var systemConflictMessage: String {
         let names = pendingSystemConflicts.map { "「\($0.info.name)」（\($0.displayString)）" }.joined(separator: "、")
         return """
-        \(chord.displayString) 原本是系统快捷键\(names)。MAIO 运行时会接管这个组合，系统的功能不会触发；退出 MAIO 后系统快捷键恢复工作。
+        \(chord.displayString) 原本是系统快捷键\(names)。保存后，MAIO 运行时按下只会触发 MAIO，系统的功能不会触发；退出 MAIO 后系统快捷键恢复工作。
 
-        如果希望退出 MAIO 后也不触发，可以选择“保存并禁用系统快捷键”：MAIO 会先备份系统原始设置，之后可在“系统快捷键”页一键恢复。
+        如果希望退出 MAIO 后它也不触发，选择“保存，并在系统中禁用”：MAIO 会先备份系统原来的设置，再在系统设置里关闭它，之后可在「系统快捷键」页随时恢复。
         """
     }
 

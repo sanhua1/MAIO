@@ -42,25 +42,3 @@ final class ElementLocator: @unchecked Sendable {
         return rect.width >= 1 && rect.height >= 1 ? rect : nil
     }
 }
-
-@MainActor
-extension ElementLocator {
-    /// MAIO 自己的窗口：在本进程里对那个窗口做辅助功能命中测试（不经过最上层的截图遮罩）。
-    /// point 和返回值都是全局坐标（左上角原点）。
-    static func ownFrame(at point: CGPoint, windowID: UInt32) -> CGRect? {
-        guard let window = NSApp.windows.first(where: { $0.windowNumber == Int(windowID) }),
-              let primary = NSScreen.screens.first?.frame.height else { return nil }
-        let screenPoint = CGPoint(x: point.x, y: primary - point.y)
-        guard let hit = window.accessibilityHitTest(screenPoint) else { return nil }
-        let frame: CGRect
-        if let element = hit as? NSAccessibilityElementProtocol {
-            frame = element.accessibilityFrame()
-        } else if let object = hit as? NSObject, let value = object.value(forKey: "accessibilityFrame") as? NSValue {
-            frame = value.rectValue
-        } else {
-            return nil
-        }
-        guard frame.width >= 1, frame.height >= 1 else { return nil }
-        return CGRect(x: frame.minX, y: primary - frame.maxY, width: frame.width, height: frame.height)
-    }
-}

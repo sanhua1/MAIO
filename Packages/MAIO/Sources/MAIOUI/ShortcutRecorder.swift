@@ -1,7 +1,7 @@
 import MAIOKit
 import SwiftUI
 
-/// 录制快捷键的按钮（Finder 增强、按键管理共用）：点一下开始录，按下组合键即保存，Esc 取消。录制期间按键不会传给其他 App（键盘会话）。
+/// 录制快捷键的按钮（Finder 增强、按键映射共用）：点一下开始录，按下组合键即保存，Esc 取消。录制期间按键不会传给其他 App（键盘会话）。
 public struct ShortcutRecorder: View {
     let chord: KeyChord?
     let input: any InputService

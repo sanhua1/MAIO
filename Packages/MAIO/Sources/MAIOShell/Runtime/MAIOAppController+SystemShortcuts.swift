@@ -20,8 +20,14 @@ extension MAIOAppController {
 
     /// 写入备份记录的原因，例如 "MAIO：fn A → 打开 App"。
     func reason(for binding: CommandBinding) -> String {
-        let title = commandCatalog.flatMap(\.commands).first { $0.id == binding.command }?.title ?? binding.command.rawValue
-        return "MAIO：\(binding.trigger.displayString) → \(binding.title ?? title)"
+        "MAIO：\(binding.trigger.displayString) → \(title(of: binding))"
+    }
+
+    /// 绑定在界面上的名字：有备注用备注，否则用命令名。
+    func title(of binding: CommandBinding) -> String {
+        binding.title
+            ?? commandCatalog.flatMap(\.commands).first { $0.id == binding.command }?.title
+            ?? binding.command.rawValue
     }
 
     /// 其他功能在某些 App 里占用了这个绑定的组合键（ADR-0018），例如 Finder 增强在 Finder 里的改键。

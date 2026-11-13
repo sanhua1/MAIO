@@ -1,7 +1,7 @@
 import MAIOKit
 
 /// 剪贴板设置。字段只增不删；结构不兼容的修改要提升 schemaVersion 并实现 migrate。
-/// "在哪些 App 里 ⌃V 不弹出"不在这里：在「快捷键」页编辑这条绑定的生效范围。
+/// "在哪些 App 里 ⌃V 不弹出"不在这里：在「MAIO 快捷键」页编辑这条绑定的生效范围。
 struct ClipboardSettings: FeatureSettings {
     static let defaultValue = ClipboardSettings()
 

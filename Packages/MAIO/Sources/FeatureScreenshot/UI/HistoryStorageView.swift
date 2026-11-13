@@ -41,9 +41,14 @@ struct HistoryStorageView: View {
                 }
             }
             LabeledContent("删除最旧的") {
-                HStack {
-                    TextField("", value: $megabytes, format: .number).frame(width: 70)
-                    Text("MB")
+                // 分组表单里的 TextField 默认没有边框、基线也不和旁边的文字对齐，要显式指定
+                HStack(alignment: .firstTextBaseline) {
+                    TextField("", value: $megabytes, format: .number)
+                        .labelsHidden()
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 70)
+                    Text("MB").foregroundStyle(.secondary)
                     Button("删除…") { pending = .oldest(max(1, megabytes)) }
                 }
             }

@@ -6,7 +6,6 @@ import SwiftUI
 enum SettingsPane: Hashable {
     case general
     case shortcuts
-    case permissions
     case systemShortcuts
     case feature(FeatureID)
 }
@@ -92,9 +91,8 @@ struct SettingsRootView: View {
             List(selection: $navigation.selection) {
                 Section {
                     Label("通用", systemImage: "gearshape").tag(SettingsPane.general)
-                    Label("快捷键", systemImage: "keyboard").tag(SettingsPane.shortcuts)
+                    Label("MAIO 快捷键", systemImage: "keyboard").tag(SettingsPane.shortcuts)
                     Label("系统快捷键", systemImage: "globe").tag(SettingsPane.systemShortcuts)
-                    Label("权限", systemImage: "lock.shield").tag(SettingsPane.permissions)
                 }
                 Section("功能") {
                     ForEach(controller.runtime.host.manifests) { manifest in
@@ -114,7 +112,6 @@ struct SettingsRootView: View {
         switch navigation.selection ?? .general {
         case .general: GeneralPane(controller: controller)
         case .shortcuts: ShortcutsPane(controller: controller)
-        case .permissions: PermissionsPane(controller: controller)
         case .systemShortcuts: SystemShortcutsPane(controller: controller)
         case let .feature(id): FeaturePane(controller: controller, featureID: id)
         }

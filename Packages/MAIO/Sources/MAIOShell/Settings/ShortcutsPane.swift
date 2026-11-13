@@ -3,7 +3,7 @@ import MAIOKit
 import MAIOUI
 import SwiftUI
 
-/// 所有绑定的总表：按类别分标签、搜索、启停、编辑、冲突提示。
+/// 「MAIO 快捷键」页：所有绑定的总表。按类别分标签，标签内再按功能分组；搜索、启停、编辑、冲突提示。
 /// 功能自己的快捷键也可以在各功能页里直接设置（`FeatureShortcutsSection`），两边是同一份数据。
 struct ShortcutsPane: View {
     let controller: MAIOAppController
@@ -31,14 +31,20 @@ struct ShortcutsPane: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             List {
-                ForEach(filtered) { binding in
-                    BindingRow(controller: controller, binding: binding)
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) { edit(binding) }
-                        .contextMenu {
-                            Button("编辑…") { edit(binding) }
-                            Button("删除", role: .destructive) { store.remove(id: binding.id) }
+                ForEach(ShortcutGroup.make(filtered, catalog: controller.commandCatalog)) { group in
+                    Section {
+                        ForEach(group.bindings) { binding in
+                            BindingRow(controller: controller, binding: binding)
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { edit(binding) }
+                                .contextMenu {
+                                    Button("编辑…") { edit(binding) }
+                                    Button("删除", role: .destructive) { store.remove(id: binding.id) }
+                                }
                         }
+                    } header: {
+                        ShortcutGroupHeader(group: group)
+                    }
                 }
             }
             .overlay {
@@ -48,7 +54,7 @@ struct ShortcutsPane: View {
             }
         }
         .searchable(text: $search, placement: .toolbar, prompt: "搜索快捷键或命令")
-        .navigationTitle("快捷键")
+        .navigationTitle("MAIO 快捷键")
         .toolbar {
             Button("添加", systemImage: "plus") { add() }
         }
@@ -80,7 +86,7 @@ struct ShortcutsPane: View {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             Text("尚未授予“辅助功能”权限，快捷键暂不生效。")
             Spacer()
-            Button("前往授权") { controller.showSettings(pane: .permissions) }
+            Button("前往授权") { controller.showSettings(pane: .general) }
         }
         .padding(10)
         .background(.orange.opacity(0.1))
@@ -101,7 +107,8 @@ struct ShortcutsPane: View {
     }
 }
 
-private struct BindingRow: View {
+/// 一条绑定的行：开关、键帽、图标、名称、说明、状态（「MAIO 快捷键」页和功能页共用）
+struct BindingRow: View {
     let controller: MAIOAppController
     let binding: CommandBinding
     /// 开关用自己的状态，不用 `Binding(get:set:)` 闭包：2026-11-12 在这个闭包里崩过一次
@@ -138,11 +145,13 @@ private struct BindingRow: View {
         .onChange(of: binding.isEnabled) { _, value in isOn = value }
     }
 
-    /// 第二行：MAIO 功能显示"功能名 · 命令名"，其他显示参数
+    /// 第二行：MAIO 功能（功能名已在分组标题里）有备注时显示命令名，否则显示命令说明；其他显示参数
     private func detail(_ presentation: BindingPresentation) -> String {
         if presentation.category == .features {
-            let parts = [presentation.manifest?.displayName, presentation.descriptor?.title].compactMap(\.self)
-            return parts.joined(separator: " · ")
+            if binding.title != nil {
+                return presentation.descriptor?.title ?? binding.command.rawValue
+            }
+            return presentation.descriptor?.summary ?? ""
         }
         let arguments = binding.arguments.sorted { $0.key < $1.key }
             .compactMap { _, value -> String? in

@@ -19,8 +19,11 @@ extension CaptureSession {
         // 鼠标下没有窗口（桌面）时高亮整个屏幕
         let windowRect = window.map { $0.frame.intersection(bounds) } ?? bounds
         highlight = windowRect
-        if let window, detectsControls {
-            requestElement(ElementRequest(point: cursor, pid: window.pid, windowID: window.id, clip: windowRect))
+        // MAIO 自己的窗口只识别整个窗口：跨进程的辅助功能查询会命中最上层的截图遮罩，
+        // 而在本进程里对 SwiftUI 窗口调用 accessibilityHitTest 会破坏 Swift 并发的主执行器，
+        // 之后任何主线程隔离检查都可能崩溃（v0.2.10，见 docs/PROGRESS.md「已知问题」）
+        if let window, detectsControls, window.pid != getpid() {
+            requestElement(ElementRequest(point: cursor, pid: window.pid, clip: windowRect))
         }
     }
 
@@ -31,10 +34,7 @@ extension CaptureSession {
         elementTask = Task { [weak self] in
             while let request = self?.pendingElement {
                 self?.pendingElement = nil
-                // MAIO 自己的窗口：遮罩在最上层，跨进程的辅助功能查询会命中遮罩，改为在本进程里直接问那个窗口
-                let frame = request.pid == getpid()
-                    ? ElementLocator.ownFrame(at: request.point, windowID: request.windowID)
-                    : await self?.locator.frame(at: request.point, pid: request.pid)
+                let frame = await self?.locator.frame(at: request.point, pid: request.pid)
                 guard let self, !Task.isCancelled else { return }
                 if self.pendingElement == nil, self.cursor == request.point, self.detectsControls,
                    self.interaction.selection == nil, !self.interaction.isDragging, let frame {

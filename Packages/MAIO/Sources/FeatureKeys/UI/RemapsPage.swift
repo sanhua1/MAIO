@@ -16,6 +16,11 @@ struct RemapsPage: View {
 
     var body: some View {
         Group {
+            PageIntro(
+                symbol: "arrow.left.arrow.right",
+                title: "其他改键",
+                text: "把某个键或鼠标按钮改成别的键、组合键，或者直接执行 MAIO 命令。例如 Home → 行首（⌘←）、鼠标侧键 → 关闭标签页（⌘W）。",
+            )
             Section {
                 ForEach(value.remaps.indices, id: \.self) { index in
                     KeyRemapRow(
@@ -30,8 +35,11 @@ struct RemapsPage: View {
             } header: {
                 Text("键盘")
             } footer: {
-                Text(
-                    "对所有键盘生效。「单键」在系统底层换掉（密码框里也生效，可以选 Fn、左右修饰键、F13～F24）；「组合键」「命令」由 MAIO 拦截后改发，按住时组合键会连发，按下的 ⇧⌃⌥⌘ 会叠加上去（例如 Home → ⌘←，⇧Home 就是 ⇧⌘←）。按住 Caps 时用 Caps 层的设置。",
+                NoteLines(
+                    "对所有键盘生效；按住 Caps 时以 Super Caps 的设置为准。",
+                    "「单键」：在系统底层替换，密码框里也有效；可以选 Fn、左右修饰键、F13～F24。",
+                    "「组合键」「命令」：由 MAIO 拦截后改发，按住时组合键会连发。",
+                    "同时按下的 ⇧ ⌃ ⌥ ⌘ 会叠加上去：例如 Home → ⌘←，那么 ⇧Home 就是 ⇧⌘←（选中到行首）。",
                 )
             }
             Section {
@@ -45,7 +53,10 @@ struct RemapsPage: View {
             } header: {
                 Text("鼠标")
             } footer: {
-                Text("中键和侧键。原来的功能（例如浏览器的后退 / 前进）会被替换掉。")
+                NoteLines(
+                    "支持鼠标中键和侧键。",
+                    "设置后按钮原来的功能（例如浏览器的后退 / 前进）会被替换。",
+                )
             }
         }
         .onChange(of: value) { _, newValue in context.settings.save(newValue) }

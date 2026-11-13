@@ -28,7 +28,7 @@ public final class MAIOAppController {
         mainMenu?.install()
         await runtime.start()
         if runtime.input.status == .waitingForPermission {
-            showSettings(pane: .permissions)
+            showSettings(pane: .general)
         }
         for issue in runtime.config.issues {
             overlay.showError(issue)

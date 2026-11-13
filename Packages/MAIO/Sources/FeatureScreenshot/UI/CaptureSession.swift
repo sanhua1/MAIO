@@ -76,7 +76,6 @@ final class CaptureSession: OverlayEventHandler {
     struct ElementRequest {
         var point: CGPoint
         var pid: Int32
-        var windowID: UInt32
         var clip: CGRect
     }
 

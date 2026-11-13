@@ -1,7 +1,7 @@
 import MAIOKit
 import SwiftUI
 
-/// 窗口切换（类似 Windows 的 Alt+Tab）。触发键可在「快捷键」页自定义，默认 ⌥⇥。
+/// 窗口切换（类似 Windows 的 Alt+Tab）。触发键可在「MAIO 快捷键」页自定义，默认 ⌥⇥。
 @MainActor
 public final class SwitcherFeature: Feature {
     public static let manifest = FeatureManifest(
