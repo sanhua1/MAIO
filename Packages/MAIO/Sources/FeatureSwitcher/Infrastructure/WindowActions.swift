@@ -17,9 +17,7 @@ enum WindowActions {
             app.unhide()
         }
         guard let windowID = item.windowID else {
-            // 没有窗口的 App：激活即可（会打开它的默认窗口）
-            app.activate(options: [.activateAllWindows])
-            logger.notice("切换：\(item.appName, privacy: .public)（无窗口，激活 App）")
+            reopen(app, logger: logger)
             return
         }
         guard let element = element ?? WindowCatalog.element(pid: item.pid, windowID: windowID) else {
@@ -35,6 +33,30 @@ enum WindowActions {
         }
         bringToFront(app: app, element: element, windowID: windowID)
         Task { await verify(item, app: app, element: element, windowID: windowID, logger: logger) }
+    }
+
+    /// 没有窗口的 App（例如关掉了所有窗口但没退出的 Chrome）。
+    ///
+    /// 只 `activate` 不会新建窗口——系统 ⌘⇥ 也是这样，只切了菜单栏。点 Dock 图标之所以能打开窗口，
+    /// 是因为它发了「重新打开」（kAEReopenApplication）事件。对已运行的 App 调 `openApplication`，
+    /// LaunchServices 会发同样的事件，且不需要"自动化"权限。
+    private static func reopen(_ app: NSRunningApplication, logger: Logger) {
+        guard let url = app.bundleURL else {
+            app.activate(options: [.activateAllWindows])
+            logger.notice("切换：\(app.localizedName ?? "?", privacy: .public)（无窗口、无 bundle，仅激活）")
+            return
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
+            if let error {
+                logger
+                    .error(
+                        "切换：重新打开 \(url.lastPathComponent, privacy: .public) 失败：\(error.localizedDescription, privacy: .public)",
+                    )
+            }
+        }
+        logger.notice("切换：\(app.localizedName ?? "?", privacy: .public)（无窗口，发送重新打开）")
     }
 
     private static func bringToFront(app: NSRunningApplication, element: AXUIElement, windowID: CGWindowID) {

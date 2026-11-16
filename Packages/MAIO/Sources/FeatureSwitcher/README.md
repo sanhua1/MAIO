@@ -42,7 +42,7 @@
 | `showDelay` | 0.1 秒 | 在这之前松手直接切换，不闪面板 |
 | `showThumbnails` | `true` | 需要"屏幕与系统录音"权限，否则显示图标 |
 | `showMinimizedWindows` / `showHiddenApps` | `true` | |
-| `showAppsWithoutWindows` | `false` | |
+| `showAppsWithoutWindows` | `true` | ⌘W 关掉最后一个窗口但没退出的 App；选中后像点 Dock 图标一样新开窗口 |
 | `oneItemPerApp` | `false` | 每个 App 一项，类似系统 ⌘⇥ |
 | `excludedBundleIDs` | `[]` | 不显示的 App |
 
@@ -60,6 +60,8 @@ alt-tab-macos（GPL-3.0，只借鉴思路、独立实现）：
 - `src/App.swift`：延迟显示面板、快速按一下直接切换
 
 ## 已知限制
+
+- 切到**没有窗口的 App**（例如关了所有窗口的 Chrome）时，发送「重新打开」事件（与点 Dock 图标相同），由 App 自己决定是否新建窗口；只激活的话系统 ⌘⇥ 也打不开窗口。
 
 - **只显示当前桌面（Space）的窗口**：`kAXWindows` 不返回其他桌面的窗口。alt-tab-macos 用私有 API 实现了跨桌面，代价高，暂不做。
 - App 暂时不响应辅助功能查询（刚启动约 1 秒内、正忙；实测「预览」刚打开文件时会这样）：用屏幕窗口列表（CGWindowList）顶替它在屏幕上的窗口，

@@ -11,8 +11,8 @@ struct SwitcherSettings: FeatureSettings {
     var showThumbnails = true
     var showMinimizedWindows = true
     var showHiddenApps = true
-    /// 显示没有打开窗口的 App（例如关掉所有窗口但仍在运行的访达）
-    var showAppsWithoutWindows = false
+    /// 显示没有打开窗口的 App（例如关掉所有窗口但仍在运行的 Chrome）；选中后发送"重新打开"，由 App 新建窗口
+    var showAppsWithoutWindows = true
     /// 每个 App 只显示一项（类似系统 ⌘⇥）
     var oneItemPerApp = false
     /// 不出现在切换器中的 App（bundle ID）

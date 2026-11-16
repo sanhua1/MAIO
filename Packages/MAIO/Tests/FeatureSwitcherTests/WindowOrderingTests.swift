@@ -13,7 +13,7 @@ struct WindowOrderingTests {
 
     @Test func `on screen windows by z order then others by app recency`() {
         let items = WindowOrdering.items(from: sample, appRecency: ["e", "c"], settings: .defaultValue)
-        #expect(items.map(\.windowID) == [10, 20, 11, 50, 30])
+        #expect(items.map(\.windowID) == [10, 20, 11, 50, 30, nil])
     }
 
     @Test func `filters follow settings`() {
@@ -30,7 +30,7 @@ struct WindowOrderingTests {
         var settings = SwitcherSettings.defaultValue
         settings.oneItemPerApp = true
         let items = WindowOrdering.items(from: sample, appRecency: ["e", "c"], settings: settings)
-        #expect(items.map(\.pid) == [1, 2, 5, 3])
+        #expect(items.map(\.pid) == [1, 2, 5, 3, 4])
         #expect(items.first?.windowID == 10)
         #expect(items.first?.displayTitle == "a")
     }
