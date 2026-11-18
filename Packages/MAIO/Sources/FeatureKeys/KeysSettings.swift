@@ -12,6 +12,8 @@ struct KeysSettings: FeatureSettings {
     var remaps: [KeyRemap] = []
     /// 鼠标中键、侧键
     var mouseRemaps: [MouseRemap] = []
+    /// 按 App 改修饰键（ADR-0026）
+    var appModifierRules: [AppModifierRule] = []
 
     /// 键码 → 动作（同一个键有多条时用第一条）
     var layerMap: [UInt16: LayerAction] {

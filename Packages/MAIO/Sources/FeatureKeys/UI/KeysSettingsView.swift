@@ -8,11 +8,13 @@ struct KeysSettingsView: View {
         case capsLayer = "Super Caps"
         case keyboards = "键盘重映射"
         case remaps = "其他改键"
+        case appRules = "按 App 改键"
     }
 
     let context: any FeatureContext
     /// 功能没在运行时为 nil
     let remaps: RemapController?
+    let appModifiers: AppModifierController?
     @State private var page = Page.capsLayer
 
     var body: some View {
@@ -25,6 +27,7 @@ struct KeysSettingsView: View {
         case .keyboards: KeyboardsPage()
         case .capsLayer: CapsLayerPage(context: context, controller: remaps)
         case .remaps: RemapsPage(context: context)
+        case .appRules: AppRulesPage(context: context, controller: appModifiers)
         }
     }
 }

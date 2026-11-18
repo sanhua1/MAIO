@@ -8,12 +8,14 @@ struct ModifierMappingStore {
 
     /// 保存的设置；没保存过时用键盘上当前生效的（例如用 hidutil 设的）
     func mapping(for device: DeviceKey) -> ModifierMapping {
-        if let saved = CFPreferencesCopyValue(
+        savedMapping(for: device) ?? ModifierMapping(pairs: keyboards.currentPairs(of: device) ?? [])
+    }
+
+    /// 偏好里保存的设置；没保存过时 nil
+    func savedMapping(for device: DeviceKey) -> ModifierMapping? {
+        CFPreferencesCopyValue(
             device.preferenceKey as CFString, kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesCurrentHost,
-        ) {
-            return ModifierMapping(pairs: HIDKeyboards.pairs(from: saved))
-        }
-        return ModifierMapping(pairs: keyboards.currentPairs(of: device) ?? [])
+        ).map { ModifierMapping(pairs: HIDKeyboards.pairs(from: $0)) }
     }
 
     /// 写入偏好并立即生效。返回 false 表示键盘上没设成功（偏好已经写了，重新接上键盘后生效）

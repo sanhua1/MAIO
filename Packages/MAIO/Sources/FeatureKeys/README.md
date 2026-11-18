@@ -7,6 +7,7 @@
 | P1 | 设备级修饰键（写进系统的修饰键设置） | ✅ 用户实测 |
 | P2 | Caps 分层（全局） | ✅ 用户实测 |
 | P3 | 全局改键、鼠标侧键 | 代码完成，待用户实测 |
+| 按 App 改键 | 指定 App 在前台时调换修饰键（ADR-0026） | ✅ 用户实测（英雄联盟） |
 
 ## 命令
 
@@ -14,7 +15,7 @@
 
 ## 设置
 
-三个标签，顺序为「Super Caps」「键盘重映射」「其他改键」，默认打开 Super Caps。每页顶部一句话说明用途，说明文字逐条分行（`UI/NoteLines.swift`）。
+四个标签，顺序为「Super Caps」「键盘重映射」「其他改键」「按 App 改键」，默认打开 Super Caps。每页顶部一句话说明用途，说明文字逐条分行（`UI/NoteLines.swift`）。
 
 设置页「Super Caps」（全局 Caps 分层，默认打开）：
 - 打开后全局把 Caps 设成"无操作"（HID 事件系统的 `UserKeyMapping`，等同 `hidutil`），不切换大写、不亮灯、单按无动作；
@@ -36,6 +37,12 @@
 - 只列出接着的键盘（每 2 秒刷新），不列 Karabiner 的虚拟键盘。
 - MAIO 看不懂的映射（别的工具写的、MAIO 不管的键）原样保留。
 
+设置页「按 App 改键」（ADR-0026，默认为空）：
+- 每条规则：一个 App（"添加 App"菜单里选运行中的 App，或"选择 App…"，可以进到 .app 包里面选游戏本体）+ 若干条"修饰键 → 修饰键"+ 启用开关；新规则默认 ⌘ ↔ ⌃ 对调。
+- 来源：⌘ ⌃ ⌥ 🌐（指"键盘重映射"之后的键）；目标：⌘ ⌃ ⌥ 🌐 / Esc / 无操作。
+- 这个 App 在前台时，给每个接着的键盘写"设备映射 ∘ 规则"合成的 `HIDKeyboardModifierMappingPairs`（服务属性，不写偏好）；离开时写回设备映射。正按着修饰键时等松开再切换。
+- 设置项 `appModifierRules`。英雄联盟的游戏进程是 `com.riotgames.LeagueofLegends.GameClient`（在 `League of Legends.app/Contents/LoL/Game/` 里），不是启动器。
+
 ## 权限
 
 辅助功能（改发按键、鼠标按钮）、输入监控（读 Caps 的按下 / 松开）。HID 层属性用 monitor 类型的客户端写，不需要 root。
@@ -47,4 +54,5 @@
 - 键盘固件自己有层的（例如用户自制的 Makey75），按住 Caps 时固件不发 Caps，MAIO 的层不起作用，按到的是固件那一层的键。
 - 退出 MAIO 时如果来不及清理，Caps 会一直是"无操作"，直到再启动 MAIO（会按设置重新设）或重新登录。
 - 密码框等安全输入时 event tap 收不到按键，层不工作（Caps 按了没反应，字母照常）。
+- 按 App 改键：MAIO 在规则生效时崩溃，有系统修饰键设置的键盘下次启动时恢复，没设置过的键盘要重新接上；规则生效期间新接上的键盘要切换一次 App 才生效。
 - 写服务属性用的 `IOHIDEventSystemClientCreateWithType` 不在公开头文件里（运行时查找）。
