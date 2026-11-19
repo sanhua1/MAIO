@@ -12,6 +12,8 @@ final class ButtonTap: Sendable {
     private struct State {
         var filters: [Entry] = []
         var frontmost: String?
+        /// 远程桌面 App（ADR-0027）：它们在前台时按钮过滤器不生效
+        var passthroughApps: Set<String> = []
         /// 按下被吞掉或改发的按钮：对应的抬起也要吞掉
         var swallowed: Set<Int> = []
     }
@@ -34,6 +36,10 @@ final class ButtonTap: Sendable {
 
     func update(frontmost: String?) {
         state.withLock { $0.frontmost = frontmost }
+    }
+
+    func update(passthroughApps: Set<String>) {
+        state.withLock { $0.passthroughApps = passthroughApps }
     }
 
     /// 有过滤器时运行，没有时停掉
@@ -76,7 +82,10 @@ final class ButtonTap: Sendable {
         }
         guard type == .otherMouseDown else { return pass }
         let modifiers = EventPoster.modifiers(from: event.flags)
-        let (filters, frontmost) = state.withLock { ($0.filters, $0.frontmost) }
+        let (filters, frontmost, passthrough) = state.withLock { ($0.filters, $0.frontmost, $0.passthroughApps) }
+        if let frontmost, passthrough.contains(frontmost) {
+            return pass
+        }
         let environment = RealtimeEnvironment(frontmostBundleID: frontmost, modifiers: modifiers)
         for entry in filters {
             let decision = entry.filter.process(MouseButtonEvent(button: button, modifiers: modifiers), environment)

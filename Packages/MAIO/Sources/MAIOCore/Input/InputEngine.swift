@@ -65,6 +65,12 @@ public final class InputEngine {
         buttons.update(frontmost: bundleID)
     }
 
+    /// 这些 App 在前台时，快捷键、按键过滤器、按钮过滤器都不生效（ADR-0027）
+    func updatePassthroughApps(_ bundleIDs: Set<String>) {
+        keyboard.update(passthroughApps: bundleIDs)
+        buttons.update(passthroughApps: bundleIDs)
+    }
+
     /// 开始录制快捷键：录制期间所有按键都交给 handler，不会触发任何绑定。
     public func beginRecording(_ handler: @escaping @MainActor (KeyChord) -> Void) {
         keyboard.setRecorder { chord in

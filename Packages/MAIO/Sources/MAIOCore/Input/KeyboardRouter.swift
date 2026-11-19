@@ -29,6 +29,8 @@ struct KeyboardRouter {
     var isRecording = false
     var hasSession = false
     var filters: [KeyFilterEntry] = []
+    /// 远程桌面 App（ADR-0027）：它们在前台时快捷键和按键过滤器都不生效，按键原样交给它们转发
+    var passthroughApps: Set<String> = []
     /// 已吞掉 keyDown 的键：对应的 keyUp 也要吞掉，否则前台 App 会收到孤立的 keyUp
     private(set) var swallowedKeys: Set<UInt16> = []
     /// 会话期间被过滤器改掉的键：原键码 → 交给会话的键码，松开时也按改后的键码交给会话
@@ -67,6 +69,9 @@ struct KeyboardRouter {
             swallowedKeys.insert(event.keyCode)
             return event.isRepeat ? .swallow : Decision(consume: true, effect: .toRecorder(event.chord))
         }
+        if isPassthrough {
+            return .pass
+        }
         if let decision = filter(event) {
             return decision
         }
@@ -74,6 +79,10 @@ struct KeyboardRouter {
         swallowedKeys.insert(event.keyCode)
         // 按住不放产生的重复事件：吞掉但不重复执行
         return event.isRepeat ? .swallow : Decision(consume: true, effect: .fire(binding))
+    }
+
+    private var isPassthrough: Bool {
+        frontmost.map(passthroughApps.contains) ?? false
     }
 
     /// 会话期间先过选择加入的按键过滤器（ADR-0025，例如 Caps+WASD 在窗口切换里当方向键用）：

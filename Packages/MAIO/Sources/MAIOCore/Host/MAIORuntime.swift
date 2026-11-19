@@ -16,6 +16,8 @@ public final class MAIORuntime {
     public let systemShortcuts: SystemShortcutManager
     /// 各功能登记占用的按键（ADR-0018）
     public let reservations = ShortcutReservations()
+    /// 远程桌面 App 在前台时让出快捷键（ADR-0027）
+    public let remoteDesktop: RemoteDesktopMode
 
     public init(
         catalog: [any Feature.Type],
@@ -38,6 +40,7 @@ public final class MAIORuntime {
         self.permissions = permissions
         self.events = events
         self.input = input
+        remoteDesktop = RemoteDesktopMode(config: config, input: input)
         let commands = catalog.flatMap { type in type.manifest.commands }
         let shortcuts = FeatureShortcutDirectory.Sources(
             bindings: bindings, systemShortcuts: systemShortcuts, reservations: reservations,
@@ -61,7 +64,10 @@ public final class MAIORuntime {
         bindings.seed(host.manifests.flatMap(\.defaultBindings))
         bindings.onChange = { [weak self] in self?.rebuildHotkeys() }
         commandBus.addChangeHandler { [weak self] in self?.rebuildHotkeys() }
-        events.onFrontmostChange { [weak self] bundleID in self?.input.updateFrontmost(bundleID) }
+        events.onFrontmostChange { [weak self] bundleID in
+            self?.input.updateFrontmost(bundleID)
+            self?.remoteDesktop.updateFrontmost(bundleID)
+        }
         await host.startAll()
         rebuildHotkeys()
         input.start()

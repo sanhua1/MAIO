@@ -361,6 +361,7 @@ let token = context.input.registerFilter(myFilter, for: .scrollWheel, stage: .tr
 ├── config/
 │   ├── app.json               # 全局设置（启用了哪些功能、登录启动等）
 │   ├── bindings.json          # 所有快捷键绑定（手写可编辑，方便备份、同步、diff）
+│   ├── remote-desktop.json    # 远程桌面 App 名单（它们在前台时让出快捷键，ADR-0027）
 │   └── features/
 │       ├── clipboard.json
 │       └── translate.json

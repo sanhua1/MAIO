@@ -18,6 +18,7 @@ struct GeneralPane: View {
                     Text(launchError).font(.caption).foregroundStyle(.red)
                 }
             }
+            RemoteDesktopSection(mode: controller.runtime.remoteDesktop)
             Section("输入引擎") {
                 LabeledContent("键盘") { engineBadge }
                 LabeledContent("指针（滚轮）") {

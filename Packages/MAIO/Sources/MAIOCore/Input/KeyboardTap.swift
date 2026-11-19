@@ -56,6 +56,10 @@ final class KeyboardTap: Sendable {
         state.withLock { $0.router.frontmost = frontmost }
     }
 
+    func update(passthroughApps: Set<String>) {
+        state.withLock { $0.router.passthroughApps = passthroughApps }
+    }
+
     func setRecorder(_ recorder: (@Sendable (KeyChord) -> Void)?) {
         state.withLock {
             $0.recorder = recorder
