@@ -1,4 +1,5 @@
 import FeatureClipboard
+import FeatureDisplay
 import FeatureFinder
 import FeatureKeys
 import FeatureLauncher
@@ -26,6 +27,7 @@ enum FeatureCatalog {
         // Finder 增强和按键映射都注册按键过滤器，过滤器按启动顺序串联：保持 Finder 在按键映射之前
         FinderFeature.self,
         KeysFeature.self,
+        DisplayFeature.self,
         // @new-feature-catalog
     ]
 }

@@ -101,6 +101,13 @@ public final class InputEngine {
         return token
     }
 
+    func addMediaKeyFilter(_ filter: any RealtimeMediaKeyFilter) -> FilterToken {
+        let token = FilterToken(rawValue: nextFilterToken)
+        nextFilterToken += 1
+        keyboard.addMediaKeyFilter(token: token, filter: filter)
+        return token
+    }
+
     func addButtonFilter(_ filter: any RealtimeButtonFilter) -> FilterToken {
         let token = FilterToken(rawValue: nextFilterToken)
         nextFilterToken += 1

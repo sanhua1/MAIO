@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import MAIOKit
 import Synchronization
@@ -9,6 +10,7 @@ final class KeyboardTap: Sendable {
         var normalizer = KeyNormalizer()
         var sessions: [EngineKeyboardSession] = []
         var recorder: (@Sendable (KeyChord) -> Void)?
+        var media = MediaKeyRouter()
     }
 
     private let state = Mutex(State())
@@ -27,7 +29,7 @@ final class KeyboardTap: Sendable {
 
     func start() -> Bool {
         let mask = (1 << CGEventType.keyDown.rawValue) | (1 << CGEventType.keyUp.rawValue)
-            | (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << CGEventType.flagsChanged.rawValue) | (1 << MediaKeyRouter.systemDefinedType)
         let runner = EventTapRunner(name: "keyboard", mask: CGEventMask(mask)) { [weak self] type, event in
             // 注意：不能写成 `self?.handle(...) ?? passUnretained(event)`。handle 返回 nil 表示"吞掉事件"，
             // 可选链会把这个 nil 当成 self 不存在，于是事件被放行（曾经的真实 bug，见 docs/PROGRESS.md）。
@@ -71,8 +73,15 @@ final class KeyboardTap: Sendable {
         state.withLock { $0.router.filters.append(entry) }
     }
 
+    func addMediaKeyFilter(token: FilterToken, filter: any RealtimeMediaKeyFilter) {
+        state.withLock { $0.media.filters.append(.init(token: token, filter: filter)) }
+    }
+
     func removeFilter(_ token: FilterToken) {
-        state.withLock { $0.router.filters.removeAll { $0.token == token } }
+        state.withLock {
+            $0.router.filters.removeAll { $0.token == token }
+            $0.media.filters.removeAll { $0.token == token }
+        }
     }
 
     func beginSession() -> EngineKeyboardSession {
@@ -92,6 +101,9 @@ final class KeyboardTap: Sendable {
     // MARK: tap 线程
 
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        if !SyntheticMarker.isMarked(event), handleMediaKey(type: type, event: event) {
+            return nil
+        }
         guard !SyntheticMarker.isMarked(event), let kind = Self.kind(of: type) else {
             return Unmanaged.passUnretained(event)
         }
@@ -112,6 +124,36 @@ final class KeyboardTap: Sendable {
         case nil: break
         }
         return decision.consume ? nil : Unmanaged.passUnretained(event)
+    }
+
+    /// 媒体键（ADR-0028）：返回 true 表示被过滤器吞掉。没有媒体键过滤器时什么也不做。
+    private func handleMediaKey(type: CGEventType, event: CGEvent) -> Bool {
+        guard state.withLock({ !$0.media.filters.isEmpty }) else { return false }
+        let decoded: (key: MediaKey, isDown: Bool, isRepeat: Bool)
+        let source: MediaKeyRouter.Source
+        if type.rawValue == MediaKeyRouter.systemDefinedType {
+            // 系统定义事件的 data1 只能经 NSEvent 读取（在 tap 线程上创建 NSEvent 是安全的）
+            guard let nsEvent = NSEvent(cgEvent: event),
+                  let media = MediaKeyRouter.decode(subtype: nsEvent.subtype.rawValue, data1: nsEvent.data1)
+            else { return false }
+            decoded = media
+            source = .systemDefined
+        } else if type == .keyDown || type == .keyUp,
+                  let key = MediaKeyRouter.brightnessKey(
+                      keyCode: UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode)),
+                  ) {
+            decoded = (key, type == .keyDown, event.getIntegerValueField(.keyboardEventAutorepeat) != 0)
+            source = .keyCode
+        } else {
+            return false
+        }
+        let modifiers = KeyNormalizer.modifiers(flags: event.flags.rawValue)
+        return state.withLock {
+            $0.media.route(
+                key: decoded.key, isDown: decoded.isDown, isRepeat: decoded.isRepeat, modifiers: modifiers,
+                source: source, time: event.timestamp,
+            )
+        }
     }
 
     private static func kind(of type: CGEventType) -> KeyEvent.Kind? {

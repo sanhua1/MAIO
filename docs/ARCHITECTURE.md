@@ -259,7 +259,7 @@ public struct CommandDescriptor: Sendable {
 
 ```
 MAIOCore/Input/
-├── KeyboardTap   独立线程：keyDown / keyUp / flagsChanged   → 快捷键流水线（§5.2）
+├── KeyboardTap   独立线程：keyDown / keyUp / flagsChanged / 媒体键（NX_SYSDEFINED，ADR-0028）→ 快捷键流水线（§5.2）、媒体键过滤器
 └── PointerTap    独立线程：scrollWheel / otherMouse*         → 实时过滤器链（§5.4）
 ```
 
@@ -416,7 +416,7 @@ App 启动
 
 ## 8. UI 结构
 
-- **菜单栏图标**：常用命令、功能状态、打开设置、退出。
+- **菜单栏图标**：各功能的菜单视图（`Feature.makeMenuBarView()`，ADR-0028，例如外接显示器的亮度滑块）、检查更新、打开设置、退出。不列功能开关。
 - **主菜单**（`MAIOShell/Runtime/MainMenu.swift`）：平时看不到（只有打开设置窗口、出现程序坞图标时显示在屏幕顶部），
   作用是让 ⌘C、⌘V、⌘A、⌘Z、⌘W 等标准快捷键在 MAIO 的所有窗口里生效。系统靠主菜单的快捷键分发这些按键，没有主菜单就都没有反应。
   无边框面板没有关闭按钮，⌘W 要设置 `FloatingPanel.onCloseCommand`。不绑定 ⌘Q。

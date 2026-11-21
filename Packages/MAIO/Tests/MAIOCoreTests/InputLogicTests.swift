@@ -232,3 +232,93 @@ struct KeyFilterFlagsTests {
         #expect(recorder.seen == [.flagsChanged])
     }
 }
+
+struct MediaKeyRouterTests {
+    private struct Fixed: RealtimeMediaKeyFilter {
+        let decision: FilterDecision
+        func process(_: MediaKeyEvent) -> FilterDecision {
+            decision
+        }
+    }
+
+    @Test func `decodes system defined data 1`() {
+        // 音量加按下：键类型 0、状态 0xA
+        let down = MediaKeyRouter.decode(subtype: 8, data1: 0 << 16 | 0xA << 8)
+        #expect(down?.key == .volumeUp && down?.isDown == true && down?.isRepeat == false)
+        let repeatDown = MediaKeyRouter.decode(subtype: 8, data1: 1 << 16 | 0xA << 8 | 1)
+        #expect(repeatDown?.key == .volumeDown && repeatDown?.isRepeat == true)
+        let up = MediaKeyRouter.decode(subtype: 8, data1: 7 << 16 | 0xB << 8)
+        #expect(up?.key == .mute && up?.isDown == false)
+        #expect(MediaKeyRouter.decode(subtype: 8, data1: 2 << 16 | 0xA << 8)?.key == .brightnessUp)
+        #expect(MediaKeyRouter.decode(subtype: 8, data1: 3 << 16 | 0xA << 8)?.key == .brightnessDown)
+        // 播放键（16）、别的子类型都不管
+        #expect(MediaKeyRouter.decode(subtype: 8, data1: 16 << 16 | 0xA << 8) == nil)
+        #expect(MediaKeyRouter.decode(subtype: 7, data1: 0xA << 8) == nil)
+    }
+
+    @Test func `consumed down also consumes its up`() {
+        var router = MediaKeyRouter()
+        router.filters = [.init(token: FilterToken(rawValue: 1), filter: Fixed(decision: .consume))]
+        let r1 = router.route(key: .volumeUp, isDown: true, isRepeat: false, modifiers: [])
+        #expect(r1)
+        let r2 = router.route(key: .volumeUp, isDown: false, isRepeat: false, modifiers: [])
+        #expect(r2)
+        // 没有对应按下的抬起放行
+        let r3 = router.route(key: .volumeUp, isDown: false, isRepeat: false, modifiers: [])
+        #expect(!r3)
+    }
+
+    @Test func `passed down passes its up`() {
+        var router = MediaKeyRouter()
+        router.filters = [.init(token: FilterToken(rawValue: 1), filter: Fixed(decision: .pass))]
+        let r4 = router.route(key: .mute, isDown: true, isRepeat: false, modifiers: [])
+        #expect(!r4)
+        let r5 = router.route(key: .mute, isDown: false, isRepeat: false, modifiers: [])
+        #expect(!r5)
+    }
+
+    @Test func `brightness key codes`() {
+        #expect(MediaKeyRouter.brightnessKey(keyCode: 144) == .brightnessUp)
+        #expect(MediaKeyRouter.brightnessKey(keyCode: 145) == .brightnessDown)
+        #expect(MediaKeyRouter.brightnessKey(keyCode: 0) == nil)
+    }
+
+    @Test func `fast presses from one source are never deduplicated`() {
+        var router = MediaKeyRouter()
+        let counter = Counter()
+        router.filters = [.init(token: FilterToken(rawValue: 1), filter: counter)]
+        for index in 0 ..< 10 {
+            // 鼠标滚轮绑的音量键：每 2 毫秒一个
+            _ = router.route(key: .volumeDown, isDown: true, isRepeat: false, modifiers: [], time: UInt64(index) * 2_000_000)
+            _ = router.route(key: .volumeDown, isDown: false, isRepeat: false, modifiers: [])
+        }
+        #expect(counter.count == 10)
+    }
+
+    @Test func `twin from the other source follows the first decision`() {
+        var router = MediaKeyRouter()
+        let counter = Counter()
+        router.filters = [.init(token: FilterToken(rawValue: 1), filter: counter)]
+        let first = router.route(
+            key: .brightnessUp, isDown: true, isRepeat: false, modifiers: [], source: .keyCode, time: 1_000_000,
+        )
+        let twin = router.route(
+            key: .brightnessUp, isDown: true, isRepeat: false, modifiers: [], source: .systemDefined, time: 3_000_000,
+        )
+        #expect(first && twin)
+        #expect(counter.count == 1)
+        // 隔得久的另一个来源是新的一次按下
+        _ = router.route(
+            key: .brightnessUp, isDown: true, isRepeat: false, modifiers: [], source: .keyCode, time: 100_000_000,
+        )
+        #expect(counter.count == 2)
+    }
+
+    private final class Counter: RealtimeMediaKeyFilter, @unchecked Sendable {
+        var count = 0
+        func process(_: MediaKeyEvent) -> FilterDecision {
+            count += 1
+            return .consume
+        }
+    }
+}

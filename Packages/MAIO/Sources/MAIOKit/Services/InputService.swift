@@ -77,7 +77,9 @@ public protocol InputService: AnyObject {
     func registerKeyFilter(_ filter: any RealtimeKeyFilter) -> FilterToken
     /// 注册鼠标按钮过滤器（ADR-0023）。按注册顺序执行，第一个不是 `pass` 的结果生效
     func registerButtonFilter(_ filter: any RealtimeButtonFilter) -> FilterToken
-    /// 注销指针过滤器、按键过滤器或鼠标按钮过滤器
+    /// 注册媒体键过滤器（ADR-0028）。按注册顺序执行，第一个 `consume` 生效
+    func registerMediaKeyFilter(_ filter: any RealtimeMediaKeyFilter) -> FilterToken
+    /// 注销任意一种过滤器
     func removeFilter(_ token: FilterToken)
     var poster: any SyntheticEventPoster { get }
 }

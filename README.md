@@ -64,6 +64,13 @@ MAIO 把日常离不开的几个小工具装进同一个 App：截图、翻译�
 - 平滑滚动，可调步长、速度、时长；按 App 设置例外。
 - 按住 ⌘ 拨滚轮，模拟触控板双指捏合缩放（看图片、网页、地图时很有用）。
 
+### 外接显示器
+- 用 Mac 的音量键调外接显示器的音量：声音从显示器出来（例如音箱插在显示器的耳机口上）、系统调不了音量时，MAIO 通过 DDC/CI 直接调显示器自己的音量；耳机、Mac 扬声器等系统能调的输出照常由系统调。键盘、鼠标上绑的媒体音量键都可以。
+- 用亮度键调外接显示器的亮度（鼠标在哪块屏幕上就调哪块）。
+- 手感和系统一样：每下一格（共 16 格），⌥⇧ 微调四分之一格，按住或快速连按一格不丢；静音键切换静音；⌥ + 音量 / 亮度键打开对应的系统设置。浮窗样式仿照系统。
+- 菜单栏菜单最上面是外接显示器的亮度条，声音从显示器出来时还有音量条；没接外接显示器时不显示。
+- 需要显示器支持 DDC/CI（大多数显示器默认打开，个别要在显示器菜单里打开），只支持 Apple 芯片的 Mac。
+
 ### 全局快捷键与系统动作
 - 任意组合键（包括 Fn / 🌐 组合）绑定到任意命令：打开 App、打开网址或文件、运行 Shell / AppleScript / 快捷指令、发送按键（键位重映射），以及上面各个功能的命令。
 - 每个快捷键可以设置生效范围（只在某些 App 里 / 除某些 App 外）。
@@ -149,6 +156,7 @@ MAIO 不联网上传任何数据。只有翻译功能会把要翻译的文字发
 - 窗口切换：`_AXUIElementGetWindow`（窗口 ID）、SkyLight 的窗口聚焦接口（切到其他桌面 / 全屏窗口）。
 - 滚轮缩放：触控板手势事件的私有字段。
 - 启动器的「锁定屏幕」：login.framework 的 `SACLockScreenImmediate`（和菜单栏「锁定屏幕」相同）。
+- 外接显示器：`IOAVServiceCreateWithService`、`IOAVServiceReadI2C` / `WriteI2C`（IOKit 导出但不在公开头文件里），用来和显示器 DDC/CI 通信。
 - 按键映射：`IOHIDEventSystemClientCreateWithType`（IOKit 导出但不在公开头文件里，系统设置的键盘面板也用它），用来改键盘的修饰键映射。
 
 ## 项目结构
@@ -180,6 +188,7 @@ docs/                   架构、决策记录（ADR）、功能规格
 - [LinearMouse](https://github.com/linearmouse/linearmouse)：滚轮缩放
 - [oil-find](https://github.com/oil-oil/oil-find)、[Cardinal](https://github.com/cardisoft/cardinal)：启动器的文件索引与搜索语法
 - [Karabiner-Elements](https://github.com/pqrs-org/Karabiner-Elements)：按键映射的功能划分（设备级 / 全局改键）
+- [MonitorControl](https://github.com/MonitorControl/MonitorControl)：外接显示器的 DDC/CI 读写
 
 GPL 项目只借鉴思路，没有复制代码；借鉴了具体做法的地方在代码注释里注明了出处。
 

@@ -32,6 +32,7 @@
 | [oil-find](https://github.com/oil-oil/oil-find) | MIT | 启动器（M7）：**文件索引的主要参考**（Swift + 薄 C 层，接近生产级）：getattrlistbulk 并行扫描、firmlink、SoA 布局约 46B/条、名称连成一块 + NEON 初筛、越打越窄、匹配质量排序、拼音备用键、FSEvents（事件库 UUID、先开流再扫描后对账、子树标记清除）、索引存盘 | `Sources/COilFind/coilfind.c`、`Scanner.swift`、`Searcher.swift`、`Query.swift`、`Pinyin.swift`、`FSWatcher.swift`、`IndexUpdater.swift`、`IndexManager.swift`、`IndexStore+*.swift`、`docs/ARCHITECTURE.md` |
 | [Cardinal](https://github.com/cardisoft/cardinal) | MIT | 启动器（M7）：**Everything 语法**（解析、优先级、过滤器执行顺序）、按 `/` 切段的路径匹配规则、FSEvents"最小祖先覆盖"合并重扫、默认忽略目录 | `cardinal-syntax/src/lib.rs`、`doc/pub/search-syntax.md`、`query-segmentation/`、`search-cache/src/cache.rs`（事件应用 919-1043）、`cardinal/src/hooks/useIgnorePaths.ts` |
 | [MacEverything](https://github.com/joshua-wu/MacEverything) | MIT | 启动器（M7）：只作对照。**反面教材**：每个文件存完整路径、三字母组倒排太占内存、目录改名不处理子树、回放流和实时流之间有空窗 | `MacEverything/Core/SearchEngineAdvancedQuery.cpp`（扩展名索引、候选集竞争） |
+| [MonitorControl](https://github.com/MonitorControl/MonitorControl) | MIT | 外接显示器（M9，已用于 `FeatureDisplay`）：Apple Silicon 的 DDC/CI 读写、IORegistry 找显示器、媒体键接管规则 | `MonitorControl/Support/Arm64DDC.swift`（IOAVService、包格式、配对）、`Support/MediaKeyTapManager.swift`（接管规则、⌥ 打开设置）、`Support/OSDUtils.swift`（系统浮窗，macOS 27 上已失效） |
 
 ## 计划中（到对应里程碑再拉取）
 

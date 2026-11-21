@@ -37,6 +37,24 @@ struct KeyNormalizer {
         return KeyEvent(kind: kind, keyCode: keyCode, modifiers: modifiers, isRepeat: isRepeat)
     }
 
+    /// 只看标志位的 ⌃⌥⇧⌘（不含 Fn），媒体键用
+    static func modifiers(flags: UInt64) -> KeyModifiers {
+        var modifiers: KeyModifiers = []
+        if flags & shiftMask != 0 {
+            modifiers.insert(.shift)
+        }
+        if flags & controlMask != 0 {
+            modifiers.insert(.control)
+        }
+        if flags & optionMask != 0 {
+            modifiers.insert(.option)
+        }
+        if flags & commandMask != 0 {
+            modifiers.insert(.command)
+        }
+        return modifiers
+    }
+
     private func hasFunction(keyCode: UInt16, flags: UInt64) -> Bool {
         if isFunctionDown {
             return true

@@ -1,8 +1,10 @@
 import AppKit
 import MAIOCore
 import MAIOKit
+import SwiftUI
 
 /// 菜单栏图标与菜单。菜单每次打开时重新生成，保证状态最新。
+/// 内容：（缺权限时的提示）→ 各功能的菜单视图 → 检查更新、设置、退出。不再列出功能开关（在设置里管理）。
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -26,18 +28,31 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             menu.addItem(warning)
             menu.addItem(.separator())
         }
-        let host = controller.runtime.host
-        for manifest in host.manifests {
-            let entry = NSMenuItem(title: manifest.displayName, action: nil, keyEquivalent: "")
-            entry.image = NSImage(systemSymbolName: manifest.symbol, accessibilityDescription: nil)
-            entry.state = host.state(of: manifest.id) == .running ? .on : .off
-            menu.addItem(entry)
+        let views = menuBarViews(controller.runtime.host)
+        views.forEach(menu.addItem)
+        if !views.isEmpty {
+            menu.addItem(.separator())
         }
-        menu.addItem(.separator())
         menu.addItem(updateItem(controller.updater))
         menu.addItem(makeItem("设置…", #selector(openSettings), key: ","))
         menu.addItem(makeItem("退出 MAIO", #selector(quit), key: "q"))
     }
+
+    /// 各功能放进菜单的视图（ADR-0028），例如外接显示器的亮度滑块。功能返回 nil 时不显示
+    private func menuBarViews(_ host: FeatureHost) -> [NSMenuItem] {
+        host.manifests.compactMap { manifest in
+            guard host.state(of: manifest.id) == .running,
+                  let view = host.feature(manifest.id)?.makeMenuBarView()
+            else { return nil }
+            let hosting = NSHostingView(rootView: view.frame(width: Self.menuViewWidth))
+            hosting.frame.size = hosting.fittingSize
+            let menuItem = NSMenuItem()
+            menuItem.view = hosting
+            return menuItem
+        }
+    }
+
+    private static let menuViewWidth: CGFloat = 280
 
     private func makeItem(_ title: String, _ action: Selector, key: String) -> NSMenuItem {
         let menuItem = NSMenuItem(title: title, action: action, keyEquivalent: key)

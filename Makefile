@@ -66,6 +66,9 @@ release: MAIO.xcodeproj ## 打包发布版：自签名证书签名（ADR-0016）
 	@codesign --verify --deep --strict $(BUILD_DIR)/Build/Products/Release/MAIO.app
 	@codesign -d --entitlements - $(BUILD_DIR)/Build/Products/Release/MAIO.app/Contents/PlugIns/MAIOFinderSync.appex 2>&1 | grep -q app-sandbox || { echo "❌ Finder 扩展缺少沙盒权限"; exit 1; }
 	@codesign -d -r- $(BUILD_DIR)/Build/Products/Release/MAIO.app 2>&1 | grep -q "certificate leaf = H\"$$(echo $(SIGN_ID) | tr A-Z a-z)\"" || { echo "❌ 签名要求不对"; exit 1; }
+	@# 发布包里不能有本机路径（用户名、目录结构），例如没 strip 的调试符号表（见 project.yml 的 DEPLOYMENT_POSTPROCESSING）
+	@leaks=$$(grep -r -l -a -F "$$HOME/" $(BUILD_DIR)/Build/Products/Release/MAIO.app || true); \
+		if [ -n "$$leaks" ]; then echo "❌ 发布包里有本机路径 $$HOME/："; echo "$$leaks"; exit 1; fi
 	@mkdir -p $(RELEASE_DIR)
 	@ditto -c -k --keepParent $(BUILD_DIR)/Build/Products/Release/MAIO.app $(RELEASE_DIR)/MAIO-$(VERSION).zip
 	@shasum -a 256 $(RELEASE_DIR)/MAIO-$(VERSION).zip

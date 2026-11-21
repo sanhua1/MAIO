@@ -16,10 +16,18 @@ public protocol Feature: AnyObject {
 
     /// 设置页（可选），显示在统一设置窗口中。
     func makeSettingsView() -> AnyView?
+
+    /// 菜单栏菜单里的视图（可选，ADR-0028）。每次打开菜单时调用，返回 nil 表示这次不显示（例如没接外接显示器）。
+    /// 视图放在菜单最上面，宽度由宿主固定，高度按内容。
+    func makeMenuBarView() -> AnyView?
 }
 
 public extension Feature {
     func makeSettingsView() -> AnyView? {
+        nil
+    }
+
+    func makeMenuBarView() -> AnyView? {
         nil
     }
 }

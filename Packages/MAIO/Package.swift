@@ -14,6 +14,7 @@ let features: [String] = [
     "Finder",
     "Launcher",
     "Keys",
+    "Display",
     // @new-feature-marker
 ]
 

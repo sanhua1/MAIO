@@ -83,6 +83,12 @@ final class ScopedInputService: InputService {
         return token
     }
 
+    func registerMediaKeyFilter(_ filter: any RealtimeMediaKeyFilter) -> FilterToken {
+        let token = engine.addMediaKeyFilter(filter)
+        tokens.insert(token)
+        return token
+    }
+
     func removeFilter(_ token: FilterToken) {
         guard tokens.remove(token) != nil else { return }
         engine.removeFilter(token)

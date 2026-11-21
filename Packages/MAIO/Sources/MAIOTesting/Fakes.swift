@@ -107,10 +107,20 @@ public final class FakeInputService: InputService {
         return token
     }
 
+    public private(set) var mediaKeyFilters: [FilterToken: any RealtimeMediaKeyFilter] = [:]
+
+    public func registerMediaKeyFilter(_ filter: any RealtimeMediaKeyFilter) -> FilterToken {
+        let token = FilterToken(rawValue: nextToken)
+        nextToken += 1
+        mediaKeyFilters[token] = filter
+        return token
+    }
+
     public func removeFilter(_ token: FilterToken) {
         filters[token] = nil
         keyFilters[token] = nil
         buttonFilters[token] = nil
+        mediaKeyFilters[token] = nil
     }
 }
 
