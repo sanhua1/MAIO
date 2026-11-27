@@ -97,7 +97,8 @@ struct LevelHUDView: View {
         HStack(spacing: 14) {
             Image(systemName: model.symbol)
                 .font(.system(size: 26, weight: .regular))
-                .frame(width: 40, alignment: .leading)
+                // 各个符号的高度不一样（静音的喇叭、小太阳都更矮/更高），定死高度，否则浮窗会跟着图标变高变矮
+                .frame(width: 40, height: 32, alignment: .leading)
                 .contentTransition(.symbolEffect(.replace))
             ChicletBar(fraction: model.fraction)
         }

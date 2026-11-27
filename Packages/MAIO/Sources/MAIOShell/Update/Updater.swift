@@ -146,7 +146,7 @@ final class Updater {
             try UpdateInstaller.launchReplacement(new: prepared.appURL, installedAt: destination, resultFile: resultFile)
             settings.skippedVersion = nil
             state = .installing
-            NSApp.terminate(nil)
+            AppTermination.request()
         } catch {
             fail(error, userInitiated: true)
         }

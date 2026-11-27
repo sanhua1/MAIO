@@ -11,8 +11,8 @@ packages:
 # 版本号：主程序和 Finder 扩展共用（扩展版本必须和主程序一致）
 settings:
   base:
-    MARKETING_VERSION: "0.3.4"
-    CURRENT_PROJECT_VERSION: "20"
+    MARKETING_VERSION: "0.3.5"
+    CURRENT_PROJECT_VERSION: "21"
   configs:
     # 发布包去掉调试符号表：不 strip 的话，STABS 调试映射里留着源文件和 .o 的绝对路径（含本机用户名）。
     # 只有 archive 才默认执行 strip，`xcodebuild build` 要显式打开 DEPLOYMENT_POSTPROCESSING。

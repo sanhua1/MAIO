@@ -88,6 +88,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func quit() {
-        NSApp.terminate(nil)
+        AppTermination.request()
     }
 }

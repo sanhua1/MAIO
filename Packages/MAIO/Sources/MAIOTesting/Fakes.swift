@@ -186,12 +186,25 @@ public final class RecordingOverlay: OverlayService {
 @MainActor
 public final class FakeSystemEvents: SystemEventService {
     public var frontmostBundleID: String?
+    private var continuations: [UUID: AsyncStream<String?>.Continuation] = [:]
+
     public init(frontmostBundleID: String? = nil) {
         self.frontmostBundleID = frontmostBundleID
     }
 
+    public func setFrontmost(_ bundleID: String?) {
+        frontmostBundleID = bundleID
+        continuations.values.forEach { $0.yield(bundleID) }
+    }
+
     public func frontmostApplicationChanges() -> AsyncStream<String?> {
-        AsyncStream { _ in }
+        let (stream, continuation) = AsyncStream.makeStream(of: String?.self)
+        let id = UUID()
+        continuations[id] = continuation
+        continuation.onTermination = { [weak self] _ in
+            Task { @MainActor in self?.continuations[id] = nil }
+        }
+        return stream
     }
 }
 

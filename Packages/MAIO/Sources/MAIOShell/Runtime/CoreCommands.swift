@@ -31,7 +31,7 @@ enum CoreCommands {
             return .null
         }
         bus.register(manifest.commands[1], owner: .core) { _ in
-            NSApp.terminate(nil)
+            AppTermination.request()
             return .null
         }
         bus.register(manifest.commands[2], owner: .core) { [weak controller] _ in
